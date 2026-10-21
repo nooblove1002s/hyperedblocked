@@ -35,7 +35,7 @@ function saveState(){
 
 function showPage(page){
   state.page = page;
-  if(page === "studio") import("./studio/studio.js").then(m => m.initStudio()).catch(err => {
+  if(page === "advancedStudio") import("./studio/advanced.js").then(m => m.initAdvancedStudio()).catch(err => {\n    console.error(err); const msg = document.getElementById("advMessage");\n    if(msg) msg.textContent = "Advanced Studio could not start: " + err.message;\n  });\n  if(page === "studio") import("./studio/studio.js").then(m => m.initStudio()).catch(err => {
     console.error(err); const r = document.getElementById("studioRoot");
     if(r) r.innerHTML = `<p class="empty-state">Studio failed to load: ${String(err.message).replace(/</g,"&lt;")}<br>The rest of HYPERBLOCK still works.</p>`;
   });
