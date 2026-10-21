@@ -1,144 +1,50 @@
 const $ = (s, root=document) => root.querySelector(s);
-
 export function initSpinArena(){
-  const canvas=$("#spinArenaCanvas");
-  if(!canvas || canvas.dataset.ready) return;
-  canvas.dataset.ready="1";
-  const ctx=canvas.getContext("2d");
-  if(!ctx) return;
-  const drawCanvas=$("#weaponDrawCanvas");
-  const dctx=drawCanvas?.getContext("2d");
-  const scriptBox=$("#weaponScript");
-  const status=$("#spinStatus");
-  const W=960,H=520;
-  let fighters=[], raf=0, running=false, last=0, elapsed=0, round=0, winner="";
-  let weaponPoints=[];
-  const colors=["#28d7f2","#ff9c45","#bd83ff","#9df36a","#ff668b","#ffe66b"];
-  const savedKey="hyperblock-spin-arena-weapon-v1";
-  const savedScriptKey="hyperblock-spin-arena-script-v1";
-  const savedPointsKey="hyperblock-spin-arena-drawing-v1";
-  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-  const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
-  const write=(key,value)=>{try{localStorage.setItem(key,JSON.stringify(value))}catch{}};
-  const defaultWeapon={name:"Orbit Blade",orbit:39,speed:4.6,damage:13,length:29,color:"#20d7ee",style:"blade"};
-  let weapon={...defaultWeapon,...read(savedKey,{})};
-  if(!scriptBox.value) scriptBox.value=localStorage.getItem(savedScriptKey)||"orbit 39\nspeed 4.6\ndamage 13\nlength 29\ncolor #20d7ee\nshape blade";
-  const parseScript=()=>{
-    const out={...defaultWeapon,...weapon};
-    const lines=(scriptBox.value||"").split(/\n|;/).map(s=>s.trim()).filter(Boolean);
-    for(const line of lines){
-      const m=line.match(/^(orbit|speed|damage|length|color|shape)\s*(?:=|\s)\s*(.+)$/i);
-      if(!m) continue;
-      const key=m[1].toLowerCase(), val=m[2].trim();
-      if(key==="color" && /^#[0-9a-f]{6}$/i.test(val)) out.color=val;
-      else if(key==="shape" && ["blade","orb","hammer","star"].includes(val.toLowerCase())) out.style=val.toLowerCase();
-      else if(["orbit","speed","damage","length"].includes(key) && Number.isFinite(Number(val))){
-        const limits={orbit:[18,80],speed:[0.8,12],damage:[4,35],length:[12,48]};
-        out[key]=clamp(Number(val),...limits[key]);
-      }
-    }
-    out.orbit=clamp(Number(out.orbit)||39,18,80);
-    out.speed=clamp(Number(out.speed)||4.6,.8,12);
-    out.damage=clamp(Number(out.damage)||13,4,35);
-    out.length=clamp(Number(out.length)||29,12,48);
-    return out;
-  };
-  function readDrawing(){
-    const points=read(savedPointsKey,[]);
-    return Array.isArray(points)?points.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)).slice(0,120):[];
-  }
-  weaponPoints=readDrawing();
-  function paintWeaponPreview(){
-    if(!dctx||!drawCanvas)return;
-    const w=drawCanvas.width,h=drawCanvas.height;
-    dctx.clearRect(0,0,w,h);dctx.fillStyle="#071522";dctx.fillRect(0,0,w,h);
-    dctx.strokeStyle="#ffffff12";dctx.lineWidth=1;
-    for(let x=0;x<w;x+=20){dctx.beginPath();dctx.moveTo(x,0);dctx.lineTo(x,h);dctx.stroke()}
-    for(let y=0;y<h;y+=20){dctx.beginPath();dctx.moveTo(0,y);dctx.lineTo(w,y);dctx.stroke()}
-    if(weaponPoints.length>1){
-      dctx.strokeStyle=weapon.color;dctx.lineWidth=5;dctx.lineCap="round";dctx.lineJoin="round";dctx.beginPath();
-      weaponPoints.forEach((p,i)=>{const x=p.x*w,y=p.y*h;i?dctx.lineTo(x,y):dctx.moveTo(x,y)});dctx.stroke();
-    }else{
-      dctx.strokeStyle=weapon.color;dctx.lineWidth=4;dctx.beginPath();dctx.moveTo(28,h/2);dctx.lineTo(w-28,h/2);dctx.stroke();
-      dctx.fillStyle=weapon.color;dctx.beginPath();dctx.moveTo(w-35,h/2-12);dctx.lineTo(w-13,h/2);dctx.lineTo(w-35,h/2+12);dctx.closePath();dctx.fill();
-    }
-  }
-  function newRound(){
-    cancelAnimationFrame(raf);running=true;last=0;elapsed=0;winner="";
-    const custom=parseScript();weapon=custom;
-    write(savedKey,weapon);try{localStorage.setItem(savedScriptKey,scriptBox.value)}catch{}
-    const names=["YOU","BOT-1","BOT-2","BOT-3","BOT-4","BOT-5"];
-    fighters=names.map((name,i)=>{
-      const angle=(Math.PI*2*i/names.length)-Math.PI/2;
-      return {name,x:W/2+Math.cos(angle)*155,y:H/2+Math.sin(angle)*155,r:i===0?21:19,hp:100,maxHp:100,color:colors[i],angle:Math.random()*6.28,orbit:i===0?custom.orbit:25+Math.random()*22,speed:i===0?custom.speed:2.5+Math.random()*2,damage:i===0?custom.damage:8+Math.random()*8,length:i===0?custom.length:20+Math.random()*17,style:i===0?custom.style:["blade","orb","hammer","star"][i%4],cool:0,stun:0,alive:true,dx:0,dy:0};
-    });
-    round++;$("#spinRound").textContent=round;$("#spinAlive").textContent=fighters.length;
-    status.textContent="Battle started! Fighters move automatically; last circle standing wins.";
-    loop(0);
-  }
-  function drawWeapon(f){
-    const a=f.angle, ox=f.x+Math.cos(a)*f.orbit, oy=f.y+Math.sin(a)*f.orbit;
-    ctx.save();ctx.translate(ox,oy);ctx.rotate(a+Math.PI/2);ctx.fillStyle=f.color;ctx.strokeStyle="#ffffffcc";ctx.lineWidth=1.5;
-    const len=f.length;
-    if(f.style==="orb"){ctx.beginPath();ctx.arc(0,0,Math.max(8,len*.42),0,Math.PI*2);ctx.fill();ctx.stroke()}
-    else if(f.style==="hammer"){ctx.fillRect(-5,-len/2,10,len*.65);ctx.fillRect(-len*.65,-len/2-5,len*1.3,12)}
-    else if(f.style==="star"){ctx.beginPath();for(let j=0;j<10;j++){const r=j%2?len*.28:len*.58,ang=j*Math.PI/5-Math.PI/2;const x=Math.cos(ang)*r,y=Math.sin(ang)*r;j?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath();ctx.fill();ctx.stroke()}
-    else{ctx.beginPath();ctx.moveTo(-5,7);ctx.lineTo(-3,-len*.35);ctx.lineTo(0,-len);ctx.lineTo(4,-len*.35);ctx.lineTo(5,7);ctx.closePath();ctx.fill();ctx.stroke()}
-    ctx.restore();
-    return {x:ox,y:oy,r:f.style==="orb"?len*.4:Math.max(7,len*.22)};
-  }
-  function draw(){
-    ctx.clearRect(0,0,W,H);ctx.fillStyle="#071522";ctx.fillRect(0,0,W,H);
-    for(let x=0;x<W;x+=32){ctx.strokeStyle="#b8efff0a";ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
-    for(let y=0;y<H;y+=32){ctx.strokeStyle="#b8efff0a";ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
-    ctx.strokeStyle="#20d7ee40";ctx.lineWidth=3;ctx.beginPath();ctx.arc(W/2,H/2,Math.min(W,H)*.43,0,Math.PI*2);ctx.stroke();
-    fighters.forEach(f=>{
-      if(!f.alive)return;
-      const w=drawWeapon(f);
-      ctx.fillStyle=f.color+"28";ctx.beginPath();ctx.arc(f.x,f.y,f.r+8,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=f.color;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle="#ffffff";ctx.lineWidth=2;ctx.stroke();
-      ctx.fillStyle="#061522";ctx.beginPath();ctx.arc(f.x-5,f.y-2,2.5,0,Math.PI*2);ctx.arc(f.x+5,f.y-2,2.5,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle="#071522";ctx.fillRect(f.x-22,f.y-f.r-13,44,5);ctx.fillStyle=f.hp>35?"#9df36a":"#ff668b";ctx.fillRect(f.x-22,f.y-f.r-13,44*clamp(f.hp/f.maxHp,0,1),5);
-      ctx.font="bold 12px system-ui";ctx.textAlign="center";ctx.fillStyle="#effaff";ctx.fillText(f.name,f.x,f.y+f.r+15);
-    });
-    if(!running && winner){ctx.fillStyle="#061522cc";ctx.fillRect(0,0,W,H);ctx.textAlign="center";ctx.fillStyle="#20d7ee";ctx.font="900 44px system-ui";ctx.fillText(winner+" WINS!",W/2,H/2-4);ctx.fillStyle="#effaff";ctx.font="18px system-ui";ctx.fillText("Press Start Battle for a rematch",W/2,H/2+32)}
-    if(!running&&!winner){ctx.textAlign="center";ctx.fillStyle="#b6cedc";ctx.font="18px system-ui";ctx.fillText("Press Start Battle to watch the arena fight",W/2,H/2)}
-  }
-  function loop(ts){
-    if(!running){draw();return}
-    const dt=Math.min(.034,(ts-(last||ts))/1000);last=ts;elapsed+=dt;
-    const alive=fighters.filter(f=>f.alive);
-    if(alive.length<=1||elapsed>90){
-      running=false;winner=alive[0]?.name||(fighters.sort((a,b)=>b.hp-a.hp)[0]?.name||"NO ONE");
-      $("#spinAlive").textContent=alive.length;status.textContent=winner+" wins!";draw();return;
-    }
-    for(const f of alive){
-      f.angle+=f.speed*dt;f.cool=Math.max(0,f.cool-dt);f.stun=Math.max(0,f.stun-dt);
-      let target=null,best=Infinity;
-      for(const other of alive){if(other===f)continue;const d=Math.hypot(other.x-f.x,other.y-f.y);if(d<best){best=d;target=other}}
-      if(target&&f.stun<=0){
-        const dx=target.x-f.x,dy=target.y-f.y,d=Math.hypot(dx,dy)||1;
-        f.x+=dx/d*(26+f.speed*3)*dt;f.y+=dy/d*(26+f.speed*3)*dt;
-        f.x=clamp(f.x,35,W-35);f.y=clamp(f.y,35,H-35);
-      }
-      const wx=f.x+Math.cos(f.angle)*f.orbit,wy=f.y+Math.sin(f.angle)*f.orbit;
-      for(const other of alive){if(other===f||f.cool>0)continue;const ox=other.x+Math.cos(other.angle)*other.orbit,oy=other.y+Math.sin(other.angle)*other.orbit;const hitDist=(f.length+other.r)*.55;if(Math.hypot(wx-other.x,wy-other.y)<hitDist||Math.hypot(wx-ox,wy-oy)<(f.length+other.length)*.24){other.hp-=f.damage;other.stun=.12;f.cool=.18;if(other.hp<=0){other.hp=0;other.alive=false;$("#spinAlive").textContent=fighters.filter(q=>q.alive).length}break}}
-    }
-    draw();raf=requestAnimationFrame(loop);
-  }
-  function pointFromEvent(e,el){const r=el.getBoundingClientRect();return {x:clamp((e.clientX-r.left)/r.width,0,1),y:clamp((e.clientY-r.top)/r.height,0,1)}}
-  let drawing=false;
-  if(drawCanvas){
-    drawCanvas.addEventListener("pointerdown",e=>{drawing=true;drawCanvas.setPointerCapture?.(e.pointerId);weaponPoints=[pointFromEvent(e,drawCanvas)];paintWeaponPreview()});
-    drawCanvas.addEventListener("pointermove",e=>{if(!drawing)return;if(weaponPoints.length<120)weaponPoints.push(pointFromEvent(e,drawCanvas));paintWeaponPreview()});
-    ["pointerup","pointercancel","lostpointercapture"].forEach(ev=>drawCanvas.addEventListener(ev,()=>{if(!drawing)return;drawing=false;write(savedPointsKey,weaponPoints)}));
-  }
-  $("#spinStart")?.addEventListener("click",newRound);
-  $("#spinStop")?.addEventListener("click",()=>{running=false;cancelAnimationFrame(raf);status.textContent="Battle paused. Press Start Battle to begin a new round.";draw()});
-  $("#weaponClear")?.addEventListener("click",()=>{weaponPoints=[];write(savedPointsKey,weaponPoints);paintWeaponPreview()});
-  $("#weaponSave")?.addEventListener("click",()=>{weapon=parseScript();write(savedKey,weapon);write(savedPointsKey,weaponPoints);try{localStorage.setItem(savedScriptKey,scriptBox.value)}catch{}status.textContent="Weapon saved on this device. Start a new battle to use it.";paintWeaponPreview()});
-  $("#weaponReset")?.addEventListener("click",()=>{scriptBox.value="orbit 39\nspeed 4.6\ndamage 13\nlength 29\ncolor #20d7ee\nshape blade";weapon={...defaultWeapon};weaponPoints=[];write(savedKey,weapon);write(savedPointsKey,weaponPoints);paintWeaponPreview();status.textContent="Weapon reset to Orbit Blade."});
-  draw();
-  paintWeaponPreview();
+ const page=$("#original"); if(!page||$("#physicsSandbox")) return;
+ const host=document.createElement("article");host.id="physicsSandbox";host.className="original-game-card";
+ host.innerHTML='<style>#physicsSandbox .pbgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:12px}#physicsSandbox canvas{display:block;width:100%;background:#06121e;border:1px solid #24536a;border-radius:10px}#physicsSandbox #pbArena{aspect-ratio:16/9}#physicsSandbox #pbDraw{height:90px;touch-action:none}#physicsSandbox .pbpanel{padding:12px;background:#071b2a;border:1px solid #24465a;border-radius:10px}#physicsSandbox .pbcontrols{display:grid;grid-template-columns:1fr 1fr;gap:8px}#physicsSandbox label{display:grid;gap:4px;font-size:.85rem}#physicsSandbox input,#physicsSandbox select,#physicsSandbox textarea{width:100%;min-width:0}#physicsSandbox .pbrow{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0}@media(max-width:760px){#physicsSandbox .pbgrid{grid-template-columns:1fr}}</style><div class="original-game-header"><div><p class="eyebrow">HYPERBLOCK ORIGINAL • SANDBOX</p><h3>Physics Battle Lab</h3><p>Create automatic circle battles, customize fighter stats, invent weapons, and watch the physics play out. Health appears inside each circle.</p></div><div class="original-game-icon">⚔️</div></div><p>Mode: <b id="pbModeText">Normal 1v1</b> · Alive: <b id="pbAlive">0</b> · Time: <b id="pbTime">0s</b> · <b id="pbWinner">Ready</b></p><div class="pbgrid"><div><canvas id="pbArena" width="960" height="540" aria-label="Physics battle arena"></canvas><div class="pbrow"><button id="pbStart" class="primary">▶ Start battle</button><button id="pbPause" class="secondary">Ⅱ Pause</button><button id="pbReset" class="secondary">↻ Reset</button><button id="pbMusic" class="secondary">♫ Music: Off</button></div><p id="pbStatus" class="form-message">Choose rules and start a battle.</p></div><div class="pbpanel"><h4>Battle settings</h4><div class="pbcontrols"><label>Mode<select id="pbMode"><option value="duel">Normal 1v1</option><option value="ffa">Free-for-all</option><option value="raid">Raid — survive enemy waves</option><option value="jug">Juggernaut — team vs boss</option><option value="tag">Tag — last team standing</option></select></label><label>Fighters (2–40)<input id="pbCount" type="number" min="2" max="40" value="2"></label><label>Health per fighter<input id="pbHp" type="number" min="1" max="1000000" value="100"></label><label>Damage multiplier<input id="pbDamage" type="number" min=".1" max="100" step=".1" value="1"></label><label>Movement speed<input id="pbSpeed" type="number" min=".2" max="12" step=".1" value="2.5"></label><label>Knockback<input id="pbKnock" type="number" min="0" max="20" step=".5" value="5"></label><label>Weapon family<select id="pbWeapon"><option value="mix">Random mix</option><option value="blade">Sword / blade</option><option value="bow">Bow / arrow</option><option value="gun">Gun / projectile</option><option value="hammer">Hammer</option><option value="orbit">Orbiting weapon</option><option value="custom">Custom weapon</option></select></label><label>Custom weapon name<input id="pbName" maxlength="50" value="My Weapon"></label><label>Weapon damage<input id="pbWd" type="number" min="1" max="100000" value="13"></label><label>Weapon reach<input id="pbReach" type="number" min="10" max="160" value="42"></label><label>Spin speed<input id="pbSpin" type="number" min="0" max="30" step=".5" value="5"></label><label>Weapon color<input id="pbColor" type="color" value="#20d7ee"></label><label>Battle time (sec)<input id="pbDuration" type="number" min="10" max="600" value="90"></label></div><p class="pbs-muted">Procedural weapon combinations let you mix weapon types, colors, damage, reach, spin, and fighter stats for thousands of possible builds.</p><h4>Draw your weapon</h4><canvas id="pbDraw" width="600" height="180"></canvas><div class="pbrow"><button id="pbClear" class="secondary">Clear drawing</button><button id="pbSave" class="secondary">Save setup</button><button id="pbLoad" class="secondary">Load setup</button></div><h4>Rules script</h4><textarea id="pbScript" rows="4" spellcheck="false">damage=1\nspeed=2.5\nknockback=5\nhp=100</textarea><p class="pbs-muted">One setting per line: damage, speed, knockback, hp. Values are checked before starting.</p></div></div>';
+ page.append(host);
+ const canvas=$("#pbArena"),ctx=canvas.getContext("2d"),draw=$("#pbDraw"),dctx=draw.getContext("2d"),status=$("#pbStatus");
+ const $id=id=>$("#"+id), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+ const num=(id,def,min,max)=>clamp(Number($id(id).value)||def,min,max);
+ const colors=["#29d8f2","#ff9b45","#bb87ff","#a8ed69","#ff688a","#ffe16b","#70a6ff","#ff8cde"];
+ const families=["blade","bow","gun","hammer","orbit"],words=["Nova","Storm","Phantom","Titan","Pixel","Solar","Frost","Comet","Void","Turbo","Echo","Quantum","Thunder","Crystal","Shadow","Meteor"],forms=["Blade","Bow","Blaster","Hammer","Scythe","Lance","Orb","Repeater","Star","Whip","Spear","Cannon","Boomerang","Rail","Axe","Pulse"];
+ let fighters=[],raf=0,running=false,last=0,elapsed=0,wave=1,winner="",drawPoints=[],drawing=false,audio=null,music=false;
+ const saveKey="hyperblock-physics-battle-v2";
+ function settings(){return {mode:$id("pbMode").value,count:num("pbCount",2,2,40),hp:num("pbHp",100,1,1e6),damage:num("pbDamage",1,.1,100),speed:num("pbSpeed",2.5,.2,12),knock:num("pbKnock",5,0,20),weapon:$id("pbWeapon").value,name:$id("pbName").value||"My Weapon",wd:num("pbWd",13,1,1e5),reach:num("pbReach",42,10,160),spin:num("pbSpin",5,0,30),color:$id("pbColor").value,duration:num("pbDuration",90,10,600),drawPoints:drawPoints};}
+ function rules(s){const o={};s.split(/\n/).forEach(line=>{const m=line.match(/^\s*(damage|speed|knockback|hp)\s*=\s*([0-9.]+)\s*$/i);if(m&&Number.isFinite(+m[2]))o[m[1].toLowerCase()]=+m[2]});return o;}
+ function makeWeapon(i,s){const family=s.weapon==="mix"?families[i%5]:s.weapon==="custom"?"orbit":s.weapon;return {family,name:s.weapon==="custom"?s.name:words[(i*7+Math.floor(Math.random()*16))%16]+" "+forms[(i*5+Math.floor(Math.random()*16))%16],damage:s.wd,reach:s.reach,spin:s.spin,color:(family==="orbit"||s.weapon==="custom")?s.color:colors[(i+Math.floor(Math.random()*8))%8],cool:0,angle:Math.random()*6.28};}
+ function fighter(i,team,s,boss=false){const a=i/Math.max(2,s.count)*Math.PI*2,hp=boss?s.hp*Math.max(4,s.count*.8):s.hp;return {id:i,team,boss,x:canvas.width/2+Math.cos(a)*(boss?0:155),y:canvas.height/2+Math.sin(a)*(boss?0:155),vx:(Math.random()-.5)*30,vy:(Math.random()-.5)*30,r:boss?32:18,hp,maxHp:hp,speed:s.speed*(boss?.75:1),knock:s.knock,weapon:makeWeapon(i,s),alive:true,stun:0,boost:0};}
+ function start(){cancelAnimationFrame(raf);let s=settings(),r=rules($id("pbScript").value);s.damage=clamp(r.damage??s.damage,.1,100);s.speed=clamp(r.speed??s.speed,.2,12);s.knock=clamp(r.knockback??s.knock,0,20);s.hp=clamp(r.hp??s.hp,1,1e6);fighters=[];elapsed=0;last=0;wave=1;winner="";running=true;let n=s.mode==="duel"?2:s.count;
+ if(s.mode==="jug"){fighters.push(fighter(0,"boss",s,true));for(let i=1;i<=n;i++)fighters.push(fighter(i,"team",s));}
+ else if(s.mode==="raid"){for(let i=0;i<Math.min(8,n);i++)fighters.push(fighter(i,"hero",s));for(let i=8;i<8+n;i++)fighters.push(fighter(i,"raid",s));}
+ else for(let i=0;i<n;i++)fighters.push(fighter(i,s.mode==="tag"?(i%2?"blue":"orange"):i===0?"blue":i===1?"orange":"free"+i,s));
+ $id("pbModeText").textContent=$id("pbMode").selectedOptions[0].textContent;$id("pbWinner").textContent="—";status.textContent="Battle started! All fighters are autonomous.";loop(0);}
+ function paintWeapon(f){const w=f.weapon,a=w.angle,l=w.reach;ctx.save();ctx.translate(f.x,f.y);ctx.rotate(a);ctx.strokeStyle=w.color;ctx.fillStyle=w.color;ctx.lineWidth=4;ctx.lineCap="round";
+ if(w.family==="bow"){ctx.beginPath();ctx.arc(0,0,l*.4,-1.57,1.57);ctx.stroke();ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(l*.7,0);ctx.stroke();}
+ else if(w.family==="gun")ctx.fillRect(0,-5,l*.75,10);else if(w.family==="hammer"){ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(l*.65,0);ctx.stroke();ctx.fillRect(l*.5,-l*.15,l*.3,l*.3);}else if(w.family==="orbit"){ctx.beginPath();ctx.arc(Math.cos(a)*l*.4,Math.sin(a)*l*.4,8,0,6.28);ctx.fill();}else{ctx.beginPath();ctx.moveTo(0,-5);ctx.lineTo(l*.8,0);ctx.lineTo(0,5);ctx.closePath();ctx.fill();}ctx.restore();}
+ function draw(){ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#06121e";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle="#16364a";for(let x=0;x<canvas.width;x+=32){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,canvas.height);ctx.stroke()}for(let y=0;y<canvas.height;y+=32){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(canvas.width,y);ctx.stroke()}ctx.strokeStyle="#2bcce84d";ctx.lineWidth=4;ctx.strokeRect(3,3,canvas.width-6,canvas.height-6);
+ fighters.forEach(f=>{if(!f.alive)return;paintWeapon(f);ctx.fillStyle=f.boss?"#ff6d4a":f.weapon.color;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,6.28);ctx.fill();ctx.strokeStyle="#e8f8ff";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle="#04101a";ctx.textAlign="center";ctx.textBaseline="middle";ctx.font="bold "+(f.boss?15:12)+"px system-ui";ctx.fillText(Math.ceil(f.hp),f.x,f.y);if(f.boss){ctx.strokeStyle="#ffb19c";ctx.beginPath();ctx.arc(f.x,f.y,f.r+5,0,6.28);ctx.stroke();}});
+ $id("pbAlive").textContent=fighters.filter(f=>f.alive).length;$id("pbTime").textContent=elapsed.toFixed(1)+"s";if(!running&&winner){ctx.fillStyle="#06121edb";ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#35d8f2";ctx.font="bold 34px system-ui";ctx.textAlign="center";ctx.fillText(winner,canvas.width/2,canvas.height/2);}}
+ function end(text){running=false;winner=text;$id("pbWinner").textContent=text;status.textContent=text;draw();}
+ function loop(ts){if(!running){draw();return;}const dt=Math.min(.033,(ts-(last||ts))/1000);last=ts;elapsed+=dt;const s=settings(),alive=fighters.filter(f=>f.alive);
+ if(elapsed>=s.duration){const lead=[...alive].sort((a,b)=>b.hp/b.maxHp-a.hp/a.maxHp)[0];end(lead?("Time up — "+lead.team.toUpperCase()+" leads"):"Time up — draw");return;}
+ if(s.mode==="raid"&&!alive.some(f=>f.team==="raid")&&alive.some(f=>f.team==="hero")){wave++;for(let i=0;i<Math.min(4,s.count);i++){let f=fighter(1000+wave*10+i,"raid",s);f.x=Math.random()*canvas.width;f.y=Math.random()*canvas.height;fighters.push(f);}status.textContent="Raid wave "+wave+" incoming!";}
+ const active=fighters.filter(f=>f.alive);
+ active.forEach(f=>{f.weapon.angle+=f.weapon.spin*dt;f.weapon.cool=Math.max(0,f.weapon.cool-dt);f.stun=Math.max(0,f.stun-dt);f.boost=Math.max(0,f.boost-dt);
+ let targets=active.filter(o=>o!==f&&o.team!==f.team);if(s.mode==="jug")targets=active.filter(o=>f.team==="boss"?o.team!=="boss":o.team==="boss");if(s.mode==="raid")targets=active.filter(o=>f.team==="raid"?o.team==="hero":o.team==="raid");if(!targets.length)return;targets.sort((a,b)=>Math.hypot(a.x-f.x,a.y-f.y)-Math.hypot(b.x-f.x,b.y-f.y));const t=targets[0],dx=t.x-f.x,dy=t.y-f.y,d=Math.hypot(dx,dy)||1;
+ if(f.stun<=0){f.vx+=dx/d*f.speed*12*dt;f.vy+=dy/d*f.speed*12*dt;}const max=f.speed*(f.boost>0?2.1:1)*45,vm=Math.hypot(f.vx,f.vy);if(vm>max){f.vx=f.vx/vm*max;f.vy=f.vy/vm*max;}f.x+=f.vx*dt;f.y+=f.vy*dt;f.vx*=Math.pow(.985,dt*60);f.vy*=Math.pow(.985,dt*60);
+ if(f.x<f.r){f.x=f.r;f.vx=Math.abs(f.vx)*.94;f.boost=.7;}if(f.x>canvas.width-f.r){f.x=canvas.width-f.r;f.vx=-Math.abs(f.vx)*.94;f.boost=.7;}if(f.y<f.r){f.y=f.r;f.vy=Math.abs(f.vy)*.94;f.boost=.7;}if(f.y>canvas.height-f.r){f.y=canvas.height-f.r;f.vy=-Math.abs(f.vy)*.94;f.boost=.7;}
+ if(Math.hypot(t.x-f.x,t.y-f.y)<f.r+t.r+f.weapon.reach*.35&&f.weapon.cool<=0){t.hp-=f.weapon.damage*s.damage;t.vx+=dx/d*t.knock*25;t.vy+=dy/d*t.knock*25;t.stun=.12;t.boost=.8;f.weapon.cool=f.weapon.family==="gun"?.35:f.weapon.family==="bow"?.6:.25;if(t.hp<=0){t.hp=0;t.alive=false;}}});
+ if(["duel","ffa","tag"].includes(s.mode)){const teams=new Set(fighters.filter(f=>f.alive).map(f=>f.team));if(teams.size<=1){end(teams.size?[...teams][0].toUpperCase()+" WINS":"DRAW");return;}}
+ if(s.mode==="jug"&&!fighters.some(f=>f.alive&&f.team==="boss")){end("JUGGERNAUT DEFEATED!");return;}if(s.mode==="raid"&&!fighters.some(f=>f.alive&&f.team==="hero")){end("RAID OVER — WAVE "+wave);return;}draw();raf=requestAnimationFrame(loop);}
+ function preview(){dctx.clearRect(0,0,draw.width,draw.height);dctx.fillStyle="#06121e";dctx.fillRect(0,0,draw.width,draw.height);dctx.strokeStyle=$id("pbColor").value;dctx.lineWidth=6;dctx.lineCap="round";dctx.lineJoin="round";dctx.beginPath();drawPoints.forEach((p,i)=>i?dctx.lineTo(p.x*draw.width,p.y*draw.height):dctx.moveTo(p.x*draw.width,p.y*draw.height));dctx.stroke();if(drawPoints.length<2){dctx.beginPath();dctx.moveTo(30,draw.height/2);dctx.lineTo(draw.width-30,draw.height/2);dctx.stroke();}}
+ draw.addEventListener("pointerdown",e=>{drawing=true;draw.setPointerCapture(e.pointerId);const r=draw.getBoundingClientRect();drawPoints.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});preview();});draw.addEventListener("pointermove",e=>{if(!drawing)return;const r=draw.getBoundingClientRect();drawPoints.push({x:clamp((e.clientX-r.left)/r.width,0,1),y:clamp((e.clientY-r.top)/r.height,0,1)});if(drawPoints.length>500)drawPoints=drawPoints.filter((_,i)=>i%2===0);preview();});["pointerup","pointercancel","lostpointercapture"].forEach(e=>draw.addEventListener(e,()=>drawing=false));
+ $id("pbStart").addEventListener("click",start);$id("pbPause").addEventListener("click",()=>{running=false;cancelAnimationFrame(raf);status.textContent="Paused. Press Start battle to restart.";draw();});$id("pbReset").addEventListener("click",()=>{running=false;cancelAnimationFrame(raf);fighters=[];elapsed=0;winner="";$id("pbWinner").textContent="Ready";status.textContent="Reset. Configure another battle.";draw();});
+ $id("pbClear").addEventListener("click",()=>{drawPoints=[];preview();});
+ $id("pbSave").addEventListener("click",()=>{try{localStorage.setItem(saveKey,JSON.stringify(settings()));status.textContent="Setup saved on this device.";}catch{status.textContent="Could not save setup in this browser."; }});
+ $id("pbLoad").addEventListener("click",()=>{try{const s=JSON.parse(localStorage.getItem(saveKey)||"null");if(!s){status.textContent="No saved setup yet.";return;}Object.entries({mode:"pbMode",count:"pbCount",hp:"pbHp",damage:"pbDamage",speed:"pbSpeed",knock:"pbKnock",weapon:"pbWeapon",name:"pbName",wd:"pbWd",reach:"pbReach",spin:"pbSpin",color:"pbColor",duration:"pbDuration"}).forEach(([k,id])=>{if(s[k]!==undefined)$id(id).value=s[k];});drawPoints=Array.isArray(s.drawPoints)?s.drawPoints:[];preview();status.textContent="Setup loaded."; }catch{status.textContent="Could not load setup."; }});
+ $id("pbMusic").addEventListener("click",()=>{music=!music;$id("pbMusic").textContent="♫ Music: "+(music?"On":"Off");if(music){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type="triangle";o.frequency.value=110;g.gain.value=.025;o.connect(g);g.connect(audio.destination);o.start();audio.osc=o;status.textContent="Ambient tone enabled."; }catch{music=false;status.textContent="Audio is unavailable.";}}else if(audio&&audio.osc){audio.osc.stop();audio.osc=null;}});
+ $id("pbMode").addEventListener("change",()=>{if($id("pbMode").value==="duel")$id("pbCount").value=2;else if(Number($id("pbCount").value)<3)$id("pbCount").value=8;});
+ preview();draw();
 }
