@@ -23,7 +23,9 @@ window.__hideLoader = function(msg){
 };
 window.__finishIntro = function(){
   window.__introFinished = true;
-  if(window.__portalReady) window.__hideLoader();
+  // Skipping the intro must work even if game-catalog loading is stalled.
+  var l=document.getElementById("loader");
+  if(l) l.classList.add("hidden");
 };
 setTimeout(function(){
   if(!window.__noobonly1Ready && !window.__portalReady){
