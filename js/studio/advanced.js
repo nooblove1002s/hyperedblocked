@@ -69,7 +69,7 @@ function renderInspector(){
   if(!selected){root.innerHTML='<p class="muted">Select an object to edit its properties.</p>';return;}
   addField("Object name",selected.userData.label,v=>{selected.userData.label=v.trim().slice(0,60)||labelFor(selected.userData.type);renderHierarchy();$("advSelectedName").textContent=selected.userData.label;say("Object renamed.");});
   vectorField("POSITION",selected.position,(i,v)=>{selected.position.setComponent(i,v);});
-  vectorField("ROTATION (radians)",selected.rotation.toArray().slice(0,3),(i,v)=>{selected.rotation.setComponent(i,v);});
+  vectorField("ROTATION (radians)",selected.rotation.toArray().slice(0,3),(i,v)=>{const r=selected.rotation; r.set(i===0?v:r.x,i===1?v:r.y,i===2?v:r.z,r.order);});
   vectorField("SCALE",selected.scale.toArray(),(i,v)=>{selected.scale.setComponent(i,Math.max(.05,Math.min(100,v)));});
   addField("Color", "#"+selected.material.color.getHexString(),v=>{if(/^#[0-9a-f]{6}$/i.test(v))selected.material.color.set(v);else say("Use a six-digit hex color like #16c8e8.");},"color");
 }
