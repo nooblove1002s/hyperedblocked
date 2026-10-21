@@ -71,7 +71,21 @@ setTimeout(function(){ if(!window.__noobonly1Ready) window.__hideLoader("Taking 
   </div>
 
   <div class="section-head"><div><p class="eyebrow">QUICK ACCESS</p><h2>Search the web</h2></div></div>
-  <div class="quick-web"><button id="fakeGoogleTrigger" class="secondary">🔎 Google Search</button><span class="muted">(there might be a surprise…)</span></div>
+  <div class="web-workspace" id="webWorkspace">
+    <form id="webSearchForm" class="web-search-form">
+      <label class="sr-only" for="webSearchQuery">Search Google</label>
+      <span class="web-search-mark" aria-hidden="true">G</span>
+      <input id="webSearchQuery" class="search" type="search" placeholder="Search Google or enter a website…" autocomplete="off">
+      <button class="primary" type="submit">Search</button>
+    </form>
+    <div class="web-browser-toolbar">
+      <span class="browser-live-dot"></span><span id="webBrowserStatus">Embedded browser workspace</span>
+      <button id="webBrowserHome" class="secondary" type="button">Home</button>
+      <button id="webBrowserNewTab" class="secondary" type="button">Open in new tab</button>
+    </div>
+    <iframe id="webBrowserFrame" title="Hyperblock embedded web browser" src="about:blank" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
+    <p class="web-browser-note">Some websites, including Google Search in some browsers, block iframe embedding. If a page refuses to load, use “Open in new tab”; Hyperblock cannot override a site's security rules.</p>
+  </div>
   <div class="section-head"><div><p class="eyebrow">FEATURED</p><h2>Quick Access</h2></div></div>
   <div id="featuredGrid" class="game-grid compact"></div>
 
