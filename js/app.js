@@ -1,222 +1,449 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#071827">
-<meta name="description" content="HYPERBLOCK gaming portal">
-<title>HYPERBLOCK • Game Hub</title>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
-<link rel="stylesheet" href="styles.css">
-<script>
-// Failsafe: runs independently of app.js so the loader can never hang forever.
-window.__hideLoader = function(msg){
-  var l=document.getElementById("loader"); if(!l||l.classList.contains("hidden")) return;
-  var t=document.getElementById("loaderText"); if(msg&&t) t.textContent=msg;
-  setTimeout(function(){ l.classList.add("hidden"); }, msg?1500:0);
+
+import { resolveData } from "./data/resolve.js";
+import { openPlayer, setupPlayer } from "./games/player.js";
+import { setupWebSearch } from "./tools/browser.js";
+// Safe localStorage: never throws (blocked storage, private mode, corrupt data)
+const ls = {
+  get(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } },
+  set(key,val){ try{ localStorage.setItem(key,val); return true; }catch(e){ return false; } }
 };
-setTimeout(function(){ if(!window.__noobonly1Ready) window.__hideLoader("Taking too long — open the console (F12) for details."); }, 12000);
-</script>
-</head>
-<body>
-<div id="loader" class="loader" aria-live="polite">
-  <div class="loader-logo">HYPER<span>BLOCK</span></div>
-  <div class="loader-ring"></div>
-  <div class="loader-progress"><i id="loaderBar"></i></div>
-  <p id="loaderText">Checking portal files…</p>
-</div>
+function readList(key){
+  try{
+    const v = JSON.parse(ls.get(key) || "[]");
+    return Array.isArray(v) ? v : [];
+  }catch(e){ return []; }
+}
 
-<header class="topbar">
-  <button class="brand" data-page="home" aria-label="HYPERBLOCK Home">HYPER<span>BLOCK</span></button>
-  <nav class="desktop-nav" aria-label="Main navigation">
-    <button data-page="home">Home</button>
-    <button data-page="games">Games</button>
-    <button data-page="studio">Game Studio</button>
-    <button data-page="tools">Tools</button>
-    <button data-page="settings">Settings</button>
-  </nav>
-  <button id="menuBtn" class="icon-btn" aria-label="Open menu">☰</button>
-</header>
+const state = {
+  page: "home",
+  games: [],
+  source: "All",
+  favorites: readList("noobonly1-favorites"),
+  recent: readList("noobonly1-recent"),
+  customGames: readList("hyperblock-custom-games")
+};
 
-<div id="mobileMenu" class="mobile-menu">
-  <button data-page="home">🏠 Home</button>
-  <button data-page="games">🎮 Games</button>
-  <button data-page="studio">🧩 Game Studio</button>
-  <button data-page="tools">💻 Tools</button>
-  <button data-page="settings">⚙️ Settings</button>
-</div>
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
 
-<main>
-<section id="home" class="page active">
-  <div class="hero">
-    <div>
-      <p class="eyebrow">YOUR PERSONAL GAME HUB</p>
-      <h1>PLAY. CREATE.<br><span>CUSTOMIZE.</span></h1>
-      <p class="hero-copy">A fast, mobile-friendly gaming portal with a searchable library, favorites, recently played games, game-source hubs, a JavaScript lab, block scripting, a starter 3D scene editor, and deep customization.</p>
-      <div class="hero-actions">
-        <button class="primary" data-page="games">🎮 Browse Games</button>
-        <button class="secondary" data-page="studio">🧩 Open Studio</button>
-      </div>
-      <div class="stats">
-        <div><b id="gameCount">0</b><span>Games / hubs</span></div>
-        <div><b id="categoryCount">0</b><span>Categories</span></div>
-        <div><b>100%</b><span>Mobile ready</span></div>
-      </div>
-    </div>
-    <div class="hero-card">
-      <div class="hero-cube"></div>
-      <div class="status"><i></i> PORTAL ONLINE</div>
-      <small>HYPERBLOCK rebuild</small>
-    </div>
-  </div>
+function saveState(){
+  ls.set("noobonly1-favorites", JSON.stringify(state.favorites));
+  ls.set("noobonly1-recent", JSON.stringify(state.recent));
+}
 
-  <div class="section-head"><div><p class="eyebrow">QUICK ACCESS</p><h2>Search the web</h2></div></div>
-  <div class="web-workspace" id="webWorkspace">
-    <form id="webSearchForm" class="web-search-form">
-      <label class="sr-only" for="webSearchQuery">Search Google</label>
-      <span class="web-search-mark" aria-hidden="true">G</span>
-      <input id="webSearchQuery" class="search" type="search" placeholder="Search Google or enter a website…" autocomplete="off">
-      <button class="primary" type="submit">Search</button>
-    </form>
-    <div class="web-browser-toolbar">
-      <span class="browser-live-dot"></span><span id="webBrowserStatus">Embedded browser workspace</span>
-      <button id="webBrowserHome" class="secondary" type="button">Home</button>
-      <button id="webBrowserNewTab" class="secondary" type="button">Open in new tab</button>
-    </div>
-    <iframe id="webBrowserFrame" title="Hyperblock embedded web browser" src="about:blank" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
-    <p class="web-browser-note">Some websites, including Google Search in some browsers, block iframe embedding. If a page refuses to load, use “Open in new tab”; Hyperblock cannot override a site's security rules.</p>
-  </div>
-  <div class="section-head"><div><p class="eyebrow">FEATURED</p><h2>Quick Access</h2></div></div>
-  <div id="featuredGrid" class="game-grid compact"></div>
+function showPage(page){
+  state.page = page;
+  if(page === "studio") import("./studio/studio.js").then(m => m.initStudio()).catch(err => {
+    console.error(err); const r = document.getElementById("studioRoot");
+    if(r) r.innerHTML = `<p class="empty-state">Studio failed to load: ${String(err.message).replace(/</g,"&lt;")}<br>The rest of HYPERBLOCK still works.</p>`;
+  });
+  $$(".page").forEach(el => el.classList.toggle("active", el.id === page));
+  $$(".desktop-nav button").forEach(el => el.classList.toggle("active", el.dataset.page === page));
+  $("#mobileMenu")?.classList.remove("open");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
 
-  <div class="section-head"><div><p class="eyebrow">RECENT</p><h2>Recently Played</h2></div></div>
-  <div id="recentGrid" class="game-grid compact"><p class="empty-state">Play a game and it will appear here.</p></div>
-</section>
+function addRecent(game){
+  state.recent = [game.id, ...state.recent.filter(id => id !== game.id)].slice(0,10);
+  saveState();
+  renderRecent();
+}
 
-<section id="games" class="page">
-  <div class="section-head">
-    <div><p class="eyebrow">LIBRARY</p><h2>Game Library</h2></div>
-    <button class="secondary" id="randomGame">🎲 Random</button>
-  </div>
-  <div class="toolbar">
-    <input id="gameSearch" class="search" placeholder="Search games, categories, or sources…" autocomplete="off">
-    <select id="categoryFilter" class="select" aria-label="Filter by category"><option>All</option></select>
-    <button id="favoritesOnly" class="secondary">☆ Favorites</button>
-  </div>
-  <div id="sourceBar" class="chips"></div>
-  <details class="add-game-panel" id="addGamePanel">
-    <summary>＋ Add a Game</summary>
-    <p class="muted">Add a game URL and optionally provide a separate embed URL. New games are saved in this browser on this device.</p>
-    <form id="addGameForm" class="add-game-form">
-      <label>Game name<input id="newGameName" class="search" maxlength="80" required placeholder="My favorite game"></label>
-      <label>Normal game website URL<input id="newGameUrl" class="search" type="text" inputmode="url" required placeholder="https://example.com/game"></label>
-      <label>Embed URL (optional)<input id="newGameEmbedUrl" class="search" type="text" inputmode="url" placeholder="https://example.com/embed/game"></label>
-      <div class="add-game-row">
-        <label>Category<select id="newGameCategory" class="select"><option>Other</option><option>Arcade</option><option>Action</option><option>Puzzle</option><option>Racing</option><option>Adventure</option><option>Strategy</option><option>Idle</option><option>Sports</option></select></label>
-        <label>Playback behavior<select id="newGameMode" class="select"><option value="auto">Try embedding first</option><option value="external">Always open externally</option></select></label>
-      </div>
-      <p class="form-hint">Embedding depends on the game provider. Hyperblock will try the embed URL first, or the normal URL if no embed URL is supplied. If embedding fails, use the external-open option in the player.</p>
-      <div class="add-game-actions"><button type="submit" class="primary">Save Game</button><button type="reset" class="secondary">Clear</button></div>
-      <p id="addGameMessage" class="form-message" role="status" aria-live="polite"></p>
-    </form>
-  </details>
-  <div id="gameGrid" class="game-grid"></div>
-</section>
+function openGame(game){
+  addRecent(game);
+  // Catalog games always try the in-site player first. User-added games respect
+  // the playback mode selected when they were added.
+  if(!game.custom || (game.embed === true && game.embedUrl)){
+    openPlayer({...game, embed:true, embedUrl:game.embedUrl || game.url});
+    return;
+  }
+  window.open(game.url, "_blank", "noopener,noreferrer");
+}
 
-<section id="studio" class="page">
-<div id="studioRoot" class="ed">
-  <div class="ed-bar">
-    <input id="edProject" class="ed-name" aria-label="Project name" value="Untitled Project">
-    <select id="edScene" aria-label="Scene"></select>
-    <button id="edNewScene" title="New scene">＋ Scene</button><button id="edRenameScene" title="Rename scene">✎</button>
-    <span class="sep"></span>
-    <button id="edUndo" title="Undo (Ctrl+Z)">↶</button><button id="edRedo" title="Redo (Ctrl+Shift+Z)">↷</button>
-    <span class="sep"></span>
-    <span id="edAdd" class="grp"><button data-add="cube">▣ Cube</button><button data-add="sphere">● Sphere</button><button data-add="plane">▭ Plane</button></span>
-    <button id="edDup" title="Duplicate (Ctrl+D)">⧉</button><button id="edDel" title="Delete (Del)">🗑</button><button id="edFocus" title="Focus (F)">◎</button>
-    <span id="edMode" class="grp"><button data-mode="translate" class="on" hidden title="Move (W)">✥ Move</button><button data-mode="rotate" hidden title="Rotate (E)">⟳ Rotate</button><button data-mode="scale" hidden title="Scale (R)">⤢ Scale</button></span>
-    <span class="sep"></span>
-    <button id="edPlay" class="play" title="Play (Space)">▶ Play</button><button id="edPause">⏸</button><button id="edStop">⏹</button>
-    <span class="sep"></span>
-    <button id="edExport">⬇ Export</button><label class="filebtn">⬆ Import<input id="edImport" type="file" accept=".json,application/json" hidden></label>
-    <span id="edStatus" class="ed-status"></span>
-  </div>
-  <div class="ed-main">
-    <aside class="ed-panel"><h4>Hierarchy</h4><div id="hierList"></div></aside>
-    <div class="rz" data-side="l" title="Drag to resize"></div>
-    <div class="ed-view"><canvas id="edCanvas"></canvas><div id="edHud" class="ed-hud"></div></div>
-    <div class="rz" data-side="r" title="Drag to resize"></div>
-    <aside class="ed-panel"><h4>Inspector</h4><div id="inspBody"></div></aside>
-  </div>
-  <div class="ed-console">
-    <div class="ed-ctool"><b>Console</b><select id="conFilter" aria-label="Filter"><option value="all">All</option><option value="info">Info</option><option value="warn">Warnings</option><option value="error">Errors</option></select><button id="conClear">Clear</button></div>
-    <div id="conOut"></div>
-  </div>
-  <p class="ed-keys"><b>Shortcuts:</b> W/E/R gizmo (WebGL viewport) • Space play/stop • Del delete • Ctrl+Z / Ctrl+Shift+Z undo/redo • Ctrl+D duplicate • F focus • Drag orbit • Shift-drag / right-drag pan • Wheel or pinch zoom • Double-click a hierarchy row to rename</p>
-</div>
-</section>
+function isFavorite(id){ return state.favorites.includes(id); }
 
-<section id="tools" class="page">
-  <div class="section-head">
-    <div><p class="eyebrow">LAB</p><h2>JavaScript Lab</h2></div>
-    <button class="primary" id="runJS">▶ Run Code</button>
-  </div>
-  <p class="muted">This lab runs code locally in your browser. It is for your own experiments.</p>
-  <textarea id="code" class="code" spellcheck="false">const message = "Hello from HYPERBLOCK!";
-console.log(message);
-document.querySelector("#output").textContent = message;</textarea>
-  <pre id="output" class="output">Output will appear here.</pre>
-</section>
+function toggleFavorite(id){
+  state.favorites = isFavorite(id)
+    ? state.favorites.filter(x => x !== id)
+    : [...state.favorites, id];
+  saveState();
+  renderGames();
+  renderFeatured();
+  renderRecent();
+}
 
-<section id="settings" class="page">
-  <div class="section-head"><div><p class="eyebrow">CONTROL CENTER</p><h2>Settings</h2></div></div>
-  <div class="settings-grid">
-    <div class="panel">
-      <h3>Appearance</h3>
-      <label>Accent <input id="accentColor" type="color" value="#16c8e8"></label>
-      <label>Background <input id="backgroundColor" type="color" value="#071827"></label>
-      <label class="switch"><input id="glowToggle" type="checkbox" checked> Glow effects</label>
-      <label class="switch"><input id="motionToggle" type="checkbox" checked> Animations</label>
-    </div>
-    <div class="panel">
-      <h3>Quick Exit</h3>
-      <p class="muted">Save a destination. Pressing Quick Exit navigates this tab to it.</p>
-      <input id="quickExitUrl" class="search" placeholder="https://example.com">
-      <button id="quickExit" class="primary full">⚡ Quick Exit</button>
-    </div>
-    <div class="panel">
-      <h3>Portal Diagnostics</h3>
-      <div id="diagnostics" class="diagnostics"></div>
-      <button id="runDiagnostics" class="secondary full">🔧 Run Diagnostics</button>
-    </div>
-  </div>
-</section>
-</main>
+function makeCard(game){
+  const card = document.createElement("article");
+  card.className = "game-card";
 
-<div id="player" class="player" hidden>
-  <div class="player-bar">
-    <button id="playerBack" class="secondary">← Games</button>
-    <b id="playerTitle"></b>
-    <span class="grow"></span>
-    <button id="playerExternal" class="secondary">↗ New tab</button>
-    <button id="playerFull" class="primary">⛶ Fullscreen</button>
-  </div>
-  <div id="playerStage" class="player-stage">
-    <div id="playerStatus" class="player-status"></div>
-    <iframe id="playerFrame" title="Game" allow="fullscreen; gamepad; autoplay" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"></iframe>
-  </div>
-</div>
-<div id="prankOverlay" class="prank-overlay" hidden aria-modal="true" role="dialog" aria-label="Google surprise">
-  <button id="prankStop" class="prank-stop">✖ STOP PRANK</button>
-  <div class="fake-google-top">Google <span>Images</span> <span>About</span></div>
-  <div class="fake-google-logo" aria-hidden="true">G<span>o</span><i>o</i><b>g</b><em>l</em><strong>e</strong></div>
-  <div class="fake-google-search">Search the web…</div>
-  <div id="prankBouncer" class="prank-bouncer">YOU ARE AN IDIOT 😂</div>
-  <div class="prank-sub">HYPERBLOCK GOT YOU 🤡</div>
-  <button id="prankSound" class="prank-sound">🔊 SOUND: OFF — TAP TO PLAY</button>
-  <p class="prank-note">It's only an animation on this page. Nothing on your device is being changed.</p>
-</div>
-<footer><span>HYPERBLOCK</span> • Game Hub • Built for mobile + desktop</footer>
-<script src="js/app.js" type="module" onerror="window.__hideLoader('Could not load js/app.js — check the file path.')"></script>
-</body>
-</html>
+  const fav = document.createElement("button");
+  fav.className = "favorite-btn";
+  fav.type = "button";
+  fav.textContent = isFavorite(game.id) ? "★" : "☆";
+  fav.title = "Favorite";
+  fav.addEventListener("click", e => { e.stopPropagation(); toggleFavorite(game.id); });
+
+  const icon = document.createElement("div");
+  icon.className = "game-icon";
+  icon.textContent = game.icon || "🎮";
+
+  const title = document.createElement("h3");
+  title.textContent = game.name;
+
+  const source = document.createElement("div");
+  source.className = "game-source";
+  source.textContent = `Source: ${game.source}`;
+  const badge = document.createElement("span");
+  const inSite = !game.custom || (game.embed === true && !!game.embedUrl);
+  badge.className = "game-badge" + (inSite ? "" : " ext");
+  badge.textContent = inSite ? "Try in-site" : "External";
+  source.append(badge);
+
+  const category = document.createElement("p");
+  category.textContent = game.category;
+
+  const play = document.createElement("button");
+  play.className = "play-btn";
+  play.type = "button";
+  play.textContent = "PLAY";
+  play.addEventListener("click", () => openGame(game));
+
+  card.append(fav, icon, title, source, category, play);
+  return card;
+}
+
+function filteredGames(){
+  const q = ($("#gameSearch")?.value || "").trim().toLowerCase();
+  const cat = $("#categoryFilter")?.value || "All";
+  return state.games.filter(g => {
+    const text = `${g.name} ${g.category} ${g.source}`.toLowerCase();
+    return (!q || text.includes(q))
+      && (cat === "All" || g.category === cat)
+      && (state.source === "All" || g.source === state.source)
+      && (!$("#favoritesOnly")?.dataset.active || isFavorite(g.id));
+  });
+}
+
+function renderGames(){
+  const grid = $("#gameGrid");
+  if(!grid) return;
+  grid.replaceChildren();
+  const list = filteredGames();
+  if(!list.length){
+    const p = document.createElement("p");
+    p.className = "empty-state";
+    p.textContent = "No games match your filters.";
+    grid.append(p);
+    return;
+  }
+  list.forEach(g => grid.append(makeCard(g)));
+}
+
+function renderFeatured(){
+  const grid = $("#featuredGrid");
+  if(!grid) return;
+  grid.replaceChildren();
+  state.games.filter(g => g.featured).slice(0,8).forEach(g => grid.append(makeCard(g)));
+}
+
+function renderRecent(){
+  const grid = $("#recentGrid");
+  if(!grid) return;
+  grid.replaceChildren();
+  const list = state.recent.map(id => state.games.find(g => g.id === id)).filter(Boolean);
+  if(!list.length){
+    grid.innerHTML = '<p class="empty-state">Play a game and it will appear here.</p>';
+    return;
+  }
+  list.slice(0,8).forEach(g => grid.append(makeCard(g)));
+}
+
+function setupFilters(){
+  const select = $("#categoryFilter");
+  const cats = [...new Set(state.games.map(g => g.category))].sort();
+  select.replaceChildren(new Option("All categories","All"));
+  cats.forEach(c => select.append(new Option(c,c)));
+
+  const sources = [...new Set(state.games.map(g => g.source))].sort();
+  const bar = $("#sourceBar");
+  bar.replaceChildren();
+  ["All",...sources].forEach(src => {
+    const b = document.createElement("button");
+    b.className = "chip" + (src === "All" ? " active" : "");
+    b.textContent = src;
+    b.addEventListener("click", () => {
+      state.source = src;
+      $$(".chip").forEach(x => x.classList.remove("active"));
+      b.classList.add("active");
+      renderGames();
+    });
+    bar.append(b);
+  });
+}
+
+const isUrl = (u, httpsOnly) => { try{ const p = new URL(u).protocol; return httpsOnly ? p === "https:" : (p === "https:" || p === "http:"); }catch(e){ return false; } };
+function cleanGames(list){
+  const seen = new Set(), out = [], skipped = [];
+  for(const g of Array.isArray(list) ? list : []){
+    const valid = g && typeof g === "object" && ["id","name","category","url"].every(k => typeof g[k] === "string" && g[k].trim()) && isUrl(g.url) && !seen.has(g.id);
+    if(!valid){ skipped.push((g && g.name) || "(invalid entry)"); continue; }
+    seen.add(g.id);
+    if(g.embed === true && !(typeof g.embedUrl === "string" && isUrl(g.embedUrl, true) && new URL(g.embedUrl).origin !== location.origin)) g.embed = false;   // same-origin embeds are never allowed
+    g.source = typeof g.source === "string" && g.source ? g.source : "Other";
+    out.push(g);
+  }
+  return {out, skipped};
+}
+
+async function loadGames(){
+  const found = await resolveData(["games","catalog","data"], {validate:a=>a.length>0&&a[0]&&a[0].name&&a[0].url});
+  const {out:data, skipped} = cleanGames(found.data);
+  if(skipped.length) console.warn(`Skipped ${skipped.length} invalid, duplicate or unsafe catalog entries:`, skipped);
+  console.info("Game data loaded from", found.url);
+  if(!data.length) throw new Error("The game catalog has no valid games");
+  const custom = cleanGames(state.customGames).out;
+  const baseIds = new Set(data.map(g => g.id));
+  state.games = [...data, ...custom.filter(g => !baseIds.has(g.id))];
+  setupFilters();
+  renderGames();
+  renderFeatured();
+  renderRecent();
+  $("#gameCount").textContent = state.games.length;
+  $("#categoryCount").textContent = new Set(state.games.map(g => g.category)).size;
+}
+
+function setupNavigation(){
+  $$("[data-page]").forEach(btn => btn.addEventListener("click", () => showPage(btn.dataset.page)));
+  $("#menuBtn")?.addEventListener("click", () => $("#mobileMenu")?.classList.toggle("open"));
+}
+
+function normalizeHttpUrl(value){
+  let raw = String(value || "").trim();
+  if(!raw) return null;
+  if(!/^[a-z][a-z0-9+.-]*:/i.test(raw)) raw = "https://" + raw;
+  try{
+    const u = new URL(raw);
+    if((u.protocol !== "https:" && u.protocol !== "http:") || !u.hostname || u.username || u.password) return null;
+    return u.href;
+  }catch(e){ return null; }
+}
+
+function setupAddGame(){
+  const form = $("#addGameForm");
+  if(!form) return;
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    const message = $("#addGameMessage");
+    const name = $("#newGameName").value.trim();
+    const url = normalizeHttpUrl($("#newGameUrl").value);
+    const rawEmbed = $("#newGameEmbedUrl").value.trim();
+    const embedUrl = rawEmbed ? normalizeHttpUrl(rawEmbed) : url;
+    const mode = $("#newGameMode").value;
+    if(!name || !url){ message.textContent = "Enter a game name and a valid http(s) website URL."; message.className = "form-message error"; return; }
+    if(rawEmbed && !embedUrl){ message.textContent = "The embed URL must be a valid http(s) URL."; message.className = "form-message error"; return; }
+    const idBase = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,48) || "custom-game";
+    let id = idBase, n = 2;
+    while(state.games.some(g => g.id === id)) id = `${idBase}-${n++}`;
+    const category = $("#newGameCategory").value || "Other";
+    const shouldTryEmbed = mode === "auto" && !!embedUrl;
+    const canEmbed = shouldTryEmbed && embedUrl.startsWith("https:") && new URL(embedUrl).origin !== location.origin;
+    const game = {id, name, url, category, icon:"🎮", source:"Added by you", embed:!!canEmbed, embedUrl:canEmbed ? embedUrl : "", custom:true};
+    const nextCustomGames = [...state.customGames, game];
+    const saved = ls.set("hyperblock-custom-games", JSON.stringify(nextCustomGames));
+    state.customGames = nextCustomGames;
+    state.games.push(game);
+    setupFilters(); renderGames(); renderFeatured();
+    $("#gameCount").textContent = state.games.length;
+    $("#categoryCount").textContent = new Set(state.games.map(g => g.category)).size;
+    if(saved){
+      form.reset();
+      message.textContent = canEmbed ? `Added and saved “${name}”. Hyperblock will try to embed it; some providers block embedding.` : `Added and saved “${name}” as an external game. To embed it, use a valid HTTPS URL on another site.`;
+      message.className = "form-message success";
+    }else{
+      message.textContent = `Added “${name}” for this session only. Browser storage is unavailable or full, so it may disappear when you refresh. Copy the game URL before leaving this page.`;
+      message.className = "form-message error";
+    }
+  });
+}
+
+function setupGameControls(){
+  setupAddGame();
+  $("#gameSearch")?.addEventListener("input", renderGames);
+  $("#categoryFilter")?.addEventListener("change", renderGames);
+  $("#randomGame")?.addEventListener("click", () => {
+    if(!state.games.length) return;
+    openGame(state.games[Math.floor(Math.random() * state.games.length)]);
+  });
+  $("#favoritesOnly")?.addEventListener("click", () => {
+    const b = $("#favoritesOnly");
+    b.dataset.active = b.dataset.active ? "" : "1";
+    b.textContent = b.dataset.active ? "★ Favorites Only" : "☆ Favorites";
+    renderGames();
+  });
+}
+
+function setupStudio(){
+  $$("[data-studio]").forEach(btn => btn.addEventListener("click", () => {
+    $$("[data-studio]").forEach(x => x.classList.remove("active"));
+    $$(".studio-panel").forEach(x => x.classList.remove("active"));
+    btn.classList.add("active");
+    $(`#${btn.dataset.studio === "blocks" ? "blocksPanel" : "scenePanel"}`).classList.add("active");
+  }));
+
+  $$("[data-block]").forEach(btn => btn.addEventListener("click", () => {
+    const block = document.createElement("div");
+    block.className = "script-block";
+    const names = {
+      event:"🟨 WHEN GAME STARTS",
+      move:"🟦 MOVE PLAYER",
+      rotate:"🟪 ROTATE OBJECT",
+      wait:"🟧 WAIT 1 SECOND",
+      if:"🟥 IF / THEN",
+      sound:"🟩 PLAY SOUND",
+      score:"⭐ CHANGE SCORE",
+      repeat:"🔁 REPEAT"
+    };
+    block.textContent = names[btn.dataset.block] || "BLOCK";
+    $("#blockCanvas").querySelector(".empty-state")?.remove();
+    $("#blockCanvas").append(block);
+  }));
+
+  $("#objectScale")?.addEventListener("input", e => {
+    const n = Number(e.target.value);
+    $("#sceneCube").style.width = `${100*n}px`;
+    $("#sceneCube").style.height = `${100*n}px`;
+  });
+
+  $("#objectRotation")?.addEventListener("input", e => {
+    $("#sceneCube").style.transform = `translate(-50%,-50%) rotateX(25deg) rotateY(${e.target.value}deg)`;
+  });
+
+  $("#objectName")?.addEventListener("input", e => {
+    e.target.setAttribute("aria-label", `Object name: ${e.target.value}`);
+  });
+
+  $("#addCube")?.addEventListener("click", () => {
+    const cube = $("#sceneCube").cloneNode(true);
+    cube.style.left = `${35 + Math.random()*30}%`;
+    cube.style.top = `${30 + Math.random()*35}%`;
+    cube.style.transform = "translate(-50%,-50%) rotateX(25deg) rotateY(35deg) scale(.7)";
+    $("#sceneView").append(cube);
+  });
+
+  $("#runScene")?.addEventListener("click", () => {
+    const cube = $("#sceneCube");
+    cube.animate([
+      {transform:"translate(-50%,-50%) rotateX(25deg) rotateY(0deg) scale(1)"},
+      {transform:"translate(-50%,-65%) rotateX(70deg) rotateY(360deg) scale(1.08)"},
+      {transform:"translate(-50%,-50%) rotateX(25deg) rotateY(720deg) scale(1)"}
+    ], {duration:900,easing:"ease-in-out"});
+  });
+}
+
+function setupJS(){
+  $("#runJS")?.addEventListener("click", () => {
+    const output = $("#output");
+    output.textContent = "";
+    try{
+      const logs = [];
+      const fakeConsole = {log:(...a)=>logs.push(a.map(String).join(" ")),error:(...a)=>logs.push("ERROR: "+a.map(String).join(" "))};
+      const fn = new Function("console", $("#code").value);
+      fn(fakeConsole);
+      if(logs.length) output.textContent = logs.join("\n");
+      if(!output.textContent) output.textContent = "Code ran successfully.";
+    }catch(err){
+      output.textContent = `Error: ${err.message}`;
+    }
+  });
+}
+
+function setupSettings(){
+  const accent = $("#accentColor");
+  const background = $("#backgroundColor");
+  const glow = $("#glowToggle");
+  const motion = $("#motionToggle");
+  const savedA = ls.get("noobonly1-accent");
+  const savedB = ls.get("noobonly1-background");
+  if(savedA){ accent.value=savedA; document.documentElement.style.setProperty("--accent",savedA); }
+  if(savedB){ background.value=savedB; document.documentElement.style.setProperty("--bg",savedB); }
+  accent?.addEventListener("input",()=>{document.documentElement.style.setProperty("--accent",accent.value);ls.set("noobonly1-accent",accent.value)});
+  background?.addEventListener("input",()=>{document.documentElement.style.setProperty("--bg",background.value);ls.set("noobonly1-background",background.value)});
+  glow?.addEventListener("change",()=>document.body.classList.toggle("no-glow",!glow.checked));
+  motion?.addEventListener("change",()=>document.body.classList.toggle("no-motion",!motion.checked));
+
+  const input = $("#quickExitUrl");
+  const saved = ls.get("noobonly1-quick-exit") || "";
+  if(input) input.value = saved;
+  $("#quickExit")?.addEventListener("click",()=>{
+    let url = input.value.trim();
+    if(!url) return;
+    if(!/^https?:\/\//i.test(url)) url = "https://" + url;
+    ls.set("noobonly1-quick-exit",url);
+    window.location.href = url;
+  });
+}
+
+async function diagnostics(){
+  const box = $("#diagnostics");
+  box.replaceChildren();
+  const checks = [
+    ["index.html","document structure",!!document.querySelector("main")],
+    ["styles.css","stylesheet loaded",document.styleSheets.length > 0],
+    ["app.js","JavaScript running",true],
+    ["games.json","game data loaded",Array.isArray(state.games) && state.games.length > 0],
+    ["navigation","navigation buttons",$$("[data-page]").length >= 5],
+    ["mobile","responsive viewport",window.innerWidth > 0]
+  ];
+  checks.forEach(([name,desc,ok])=>{
+    const d=document.createElement("div");
+    d.className="diag " + (ok?"ok":"bad");
+    d.textContent=`${ok?"✓":"✕"} ${name} — ${desc}`;
+    box.append(d);
+  });
+}
+
+function startLoader(){
+  const bar=$("#loaderBar"), text=$("#loaderText");
+  let progress=0;
+  const timer=setInterval(()=>{
+    progress=Math.min(progress+8,92);
+    bar.style.width=progress+"%";
+    if(progress<30) text.textContent="Loading interface…";
+    else if(progress<60) text.textContent="Loading game library…";
+    else text.textContent="Checking portal files…";
+  },80);
+  window.__loaderTimer = timer;
+  return ()=>{clearInterval(timer);bar.style.width="100%";text.textContent="Ready!";setTimeout(()=>$("#loader")?.classList.add("hidden"),250)};
+}
+
+document.addEventListener("DOMContentLoaded", async ()=>{
+  const finish = startLoader();
+  let failure = null;
+
+  // One broken UI feature must not block the rest of the portal
+  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupStudio, setupJS, setupSettings]){
+    try{ step(); }catch(e){ console.error(`${step.name} failed:`, e); }
+  }
+
+  try{
+    await loadGames();
+    await diagnostics();
+  }catch(error){
+    failure = error;
+    console.error(error);
+    const grid = $("#gameGrid");
+    if(grid) grid.innerHTML = `<p class="empty-state">⚠️ ${String(error.message).replace(/</g,"&lt;")}<br>Check that <b>data/games.json</b> exists and the site is running through GitHub Pages.</p>`;
+  }finally{
+    if(failure){
+      const t = $("#loaderText"), b = $("#loaderBar");
+      if(t) t.textContent = `Portal error: ${failure.message}`;
+      if(b) b.style.width = "100%";
+      clearInterval(window.__loaderTimer);
+      setTimeout(()=>$("#loader")?.classList.add("hidden"), 900);
+    }else{
+      finish();
+    }
+    window.__noobonly1Ready = true;
+  }
+});
+
