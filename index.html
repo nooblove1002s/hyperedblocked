@@ -11,21 +11,71 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <link rel="stylesheet" href="styles.css">
 <script>
-// Failsafe: runs independently of app.js so the loader can never hang forever.
+// Intro and app startup coordinate so the loader cannot hide the intro too early.
+window.__introFinished = false;
+window.__portalReady = false;
 window.__hideLoader = function(msg){
-  var l=document.getElementById("loader"); if(!l||l.classList.contains("hidden")) return;
-  var t=document.getElementById("loaderText"); if(msg&&t) t.textContent=msg;
-  setTimeout(function(){ l.classList.add("hidden"); }, msg?1500:0);
+  var l=document.getElementById("loader");
+  var t=document.getElementById("loaderText");
+  if(msg&&t) t.textContent=msg;
+  window.__portalReady = true;
+  if(window.__introFinished && l) l.classList.add("hidden");
 };
-setTimeout(function(){ if(!window.__noobonly1Ready) window.__hideLoader("Taking too long — open the console (F12) for details."); }, 12000);
+window.__finishIntro = function(){
+  window.__introFinished = true;
+  if(window.__portalReady) window.__hideLoader();
+};
+setTimeout(function(){
+  if(!window.__noobonly1Ready && !window.__portalReady){
+    var t=document.getElementById("loaderText");
+    if(t) t.textContent="Still loading — the portal will open shortly.";
+  }
+  window.__finishIntro();
+}, 14000);
+document.addEventListener("DOMContentLoaded", function(){
+  var v=document.getElementById("introVideo");
+  var sound=document.getElementById("introSoundBtn");
+  var skip=document.getElementById("introSkipBtn");
+  var fallback=document.querySelector(".loader-fallback");
+  if(v){
+    v.addEventListener("ended", window.__finishIntro, {once:true});
+    v.addEventListener("error", function(){
+      if(fallback) fallback.classList.add("show");
+      if(sound) sound.hidden=true;
+      window.__finishIntro();
+    }, {once:true});
+    var play=v.play();
+    if(play && play.catch) play.catch(function(){
+      if(fallback) fallback.classList.add("show");
+    });
+  }
+  if(sound && v) sound.addEventListener("click", function(){
+    v.muted=false;
+    v.volume=1;
+    var play=v.play();
+    if(play && play.catch) play.catch(function(){});
+    sound.textContent="🔊 Sound on";
+    sound.disabled=true;
+  });
+  if(skip) skip.addEventListener("click", window.__finishIntro);
+});
 </script>
 </head>
 <body>
 <div id="loader" class="loader" aria-live="polite">
-  <div class="loader-logo">HYPER<span>BLOCK</span></div>
-  <div class="loader-ring"></div>
-  <div class="loader-progress"><i id="loaderBar"></i></div>
-  <p id="loaderText">Checking portal files…</p>
+  <video id="introVideo" class="intro-video" autoplay muted playsinline preload="auto" aria-label="Hyperblock intro">
+    <source src="assets/hyperblock-intro.mp4" type="video/mp4">
+  </video>
+  <div class="intro-controls">
+    <button id="introSoundBtn" class="secondary" type="button">🔇 Enable sound</button>
+    <button id="introSkipBtn" class="secondary" type="button">Skip intro</button>
+  </div>
+  <div class="loader-fallback">
+    <div class="loader-logo">HYPER<span>BLOCK</span></div>
+    <div class="loader-ring"></div>
+    <div class="loader-progress"><i id="loaderBar"></i></div>
+    <p id="loaderText">Loading Hyperblock…</p>
+  </div>
 </div>
 
 <header class="topbar">
