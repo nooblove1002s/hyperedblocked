@@ -83,6 +83,7 @@ document.addEventListener("DOMContentLoaded", function(){
   <nav class="desktop-nav" aria-label="Main navigation">
     <button data-page="home">Home</button>
     <button data-page="games">Games</button>
+    <button data-page="original">Original</button>
     <button data-page="studio">Game Studio</button>
     <button data-page="tools">Tools</button>
     <button data-page="settings">Settings</button>
@@ -93,6 +94,7 @@ document.addEventListener("DOMContentLoaded", function(){
 <div id="mobileMenu" class="mobile-menu">
   <button data-page="home">🏠 Home</button>
   <button data-page="games">🎮 Games</button>
+  <button data-page="original">🟧 Original</button>
   <button data-page="studio">🧩 Game Studio</button>
   <button data-page="tools">💻 Tools</button>
   <button data-page="settings">⚙️ Settings</button>
@@ -175,6 +177,20 @@ document.addEventListener("DOMContentLoaded", function(){
     </form>
   </details>
   <div id="gameGrid" class="game-grid"></div>
+</section>
+
+
+<section id="original" class="page">
+  <div class="section-head"><div><p class="eyebrow">MADE BY HYPERBLOCK</p><h2>Original Games</h2></div><button class="secondary" data-page="servers">🌐 Multiplayer Servers</button></div>
+  <p class="muted">Games in this tab are built for Hyperblock. Your first playable prototype is below. Multiplayer room discovery and live presence are being built alongside the original game; real-time gameplay synchronization is a separate next step.</p>
+  <article class="original-game-card">
+    <div class="original-game-header"><div><p class="eyebrow">HYPERBLOCK ORIGINAL • PROTOTYPE 01</p><h3>Neon Block Dash</h3><p>Run, jump, collect energy orbs, and dodge the red hazards. Works with keyboard and touch controls.</p></div><div class="original-game-icon">🟧</div></div>
+    <div class="original-game-stats"><span>Score <b id="obScore">0</b></span><span>Best <b id="obBest">0</b></span><span>Lives <b id="obLives">3</b></span></div>
+    <canvas id="originalGameCanvas" width="900" height="420" aria-label="Neon Block Dash game"></canvas>
+    <div class="original-game-actions"><button id="obStart" class="primary">▶ Start / Restart</button><button id="obPause" class="secondary">Ⅱ Pause</button></div>
+    <div class="original-touch-controls" aria-label="Touch game controls"><button data-ob-control="left" aria-label="Move left">◀</button><button data-ob-control="jump" aria-label="Jump">▲ Jump</button><button data-ob-control="right" aria-label="Move right">▶</button></div>
+    <p id="obStatus" class="form-message" role="status">Press Start to play. Use ← → and Space, or the touch controls.</p>
+  </article>
 </section>
 
 <section id="studio" class="page">
