@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", function(){
   </video>
   <div class="intro-controls">
     <button id="introSoundBtn" class="secondary" type="button">🔇 Enable sound</button>
-    <button id="introSkipBtn" class="secondary" type="button">Skip intro</button>
+    <button id="introSkipBtn" class="secondary" type="button" onclick="window.__finishIntro(); return false;">Skip intro</button>
   </div>
   <div class="loader-fallback">
     <div class="loader-logo">HYPER<span>BLOCK</span></div>
