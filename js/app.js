@@ -4,6 +4,7 @@ import { openPlayer, setupPlayer } from "./games/player.js";
 import { setupWebSearch } from "./tools/browser.js";
 import { initServerBrowser } from "./server-browser.js";
 import { initOriginalGame } from "./original.js";
+import { initSpinArena } from "./spin-arena.js";
 // Safe localStorage: never throws (blocked storage, private mode, corrupt data)
 const ls = {
   get(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } },
@@ -367,7 +368,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   let failure = null;
 
   // One broken UI feature must not block the rest of the portal
-  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings, initOriginalGame, initServerBrowser]){
+  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings, initOriginalGame, initSpinArena, initServerBrowser]){
     try{ step(); }catch(e){ console.error(`${step.name} failed:`, e); }
   }
 
