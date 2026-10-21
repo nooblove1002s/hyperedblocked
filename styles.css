@@ -162,8 +162,9 @@ body.playing{overflow:hidden}
 
 /* Custom Hyperblock intro */
 .loader{background:#05070b;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px}
-.intro-video{display:block;width:min(100%,560px);height:min(78vh,780px);object-fit:contain;background:#000;border-radius:12px}
-.intro-controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;z-index:2}
+.intro-video{display:block;width:min(100%,560px);height:min(78vh,780px);object-fit:contain;background:#000;border-radius:12px;pointer-events:none}
+.intro-controls{position:relative;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;z-index:10000;pointer-events:auto}
+.intro-controls button{position:relative;z-index:10001;pointer-events:auto;touch-action:manipulation}
 .loader-fallback{display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:22px;background:#071827}
 .loader-fallback.show{display:flex}
 .loader-fallback .loader-logo{font-size:clamp(32px,8vw,70px);font-weight:1000;letter-spacing:.08em}
