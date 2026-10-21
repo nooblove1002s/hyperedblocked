@@ -1,6 +1,7 @@
 
 import { resolveData } from "./data/resolve.js";
 import { openPlayer, setupPlayer } from "./games/player.js";
+import { initServerBrowser } from "./server-browser.js";
 // Safe localStorage: never throws (blocked storage, private mode, corrupt data)
 const ls = {
   get(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } },
@@ -415,7 +416,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   let failure = null;
 
   // One broken UI feature must not block the rest of the portal
-  for(const step of [setupPlayer, setupNavigation, setupGameControls, setupStudio, setupJS, setupSettings]){
+  for(const step of [setupPlayer, setupNavigation, initServerBrowser, setupGameControls, setupStudio, setupJS, setupSettings]){
     try{ step(); }catch(e){ console.error(`${step.name} failed:`, e); }
   }
 
