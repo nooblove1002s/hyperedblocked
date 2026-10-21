@@ -282,63 +282,7 @@ function setupGameControls(){
   });
 }
 
-function setupStudio(){
-  $$("[data-studio]").forEach(btn => btn.addEventListener("click", () => {
-    $$("[data-studio]").forEach(x => x.classList.remove("active"));
-    $$(".studio-panel").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    $(`#${btn.dataset.studio === "blocks" ? "blocksPanel" : "scenePanel"}`).classList.add("active");
-  }));
-
-  $$("[data-block]").forEach(btn => btn.addEventListener("click", () => {
-    const block = document.createElement("div");
-    block.className = "script-block";
-    const names = {
-      event:"🟨 WHEN GAME STARTS",
-      move:"🟦 MOVE PLAYER",
-      rotate:"🟪 ROTATE OBJECT",
-      wait:"🟧 WAIT 1 SECOND",
-      if:"🟥 IF / THEN",
-      sound:"🟩 PLAY SOUND",
-      score:"⭐ CHANGE SCORE",
-      repeat:"🔁 REPEAT"
-    };
-    block.textContent = names[btn.dataset.block] || "BLOCK";
-    $("#blockCanvas").querySelector(".empty-state")?.remove();
-    $("#blockCanvas").append(block);
-  }));
-
-  $("#objectScale")?.addEventListener("input", e => {
-    const n = Number(e.target.value);
-    $("#sceneCube").style.width = `${100*n}px`;
-    $("#sceneCube").style.height = `${100*n}px`;
-  });
-
-  $("#objectRotation")?.addEventListener("input", e => {
-    $("#sceneCube").style.transform = `translate(-50%,-50%) rotateX(25deg) rotateY(${e.target.value}deg)`;
-  });
-
-  $("#objectName")?.addEventListener("input", e => {
-    e.target.setAttribute("aria-label", `Object name: ${e.target.value}`);
-  });
-
-  $("#addCube")?.addEventListener("click", () => {
-    const cube = $("#sceneCube").cloneNode(true);
-    cube.style.left = `${35 + Math.random()*30}%`;
-    cube.style.top = `${30 + Math.random()*35}%`;
-    cube.style.transform = "translate(-50%,-50%) rotateX(25deg) rotateY(35deg) scale(.7)";
-    $("#sceneView").append(cube);
-  });
-
-  $("#runScene")?.addEventListener("click", () => {
-    const cube = $("#sceneCube");
-    cube.animate([
-      {transform:"translate(-50%,-50%) rotateX(25deg) rotateY(0deg) scale(1)"},
-      {transform:"translate(-50%,-65%) rotateX(70deg) rotateY(360deg) scale(1.08)"},
-      {transform:"translate(-50%,-50%) rotateX(25deg) rotateY(720deg) scale(1)"}
-    ], {duration:900,easing:"ease-in-out"});
-  });
-}
+// The real 3D editor is implemented in js/studio/studio.js and loaded on demand.
 
 function setupJS(){
   $("#runJS")?.addEventListener("click", () => {
