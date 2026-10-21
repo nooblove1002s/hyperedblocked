@@ -48,6 +48,24 @@ setTimeout(function(){ if(!window.__noobonly1Ready) window.__hideLoader("Taking 
 
 <main>
 <section id="home" class="page active">
+  <div class="section-head"><div><p class="eyebrow">QUICK ACCESS</p><h2>Search the web</h2></div></div>
+  <div class="web-workspace" id="webWorkspace">
+    <form id="webSearchForm" class="web-search-form">
+      <label class="sr-only" for="webSearchQuery">Search Google</label>
+      <span class="web-search-mark" aria-hidden="true">⌕</span>
+      <select id="webSearchEngine" class="select" aria-label="Search engine"><option value="google">Google</option><option value="duckduckgo">DuckDuckGo</option></select>
+      <input id="webSearchQuery" class="search" type="search" placeholder="Search the web or enter a URL…" autocomplete="off">
+      <button class="primary" type="submit">Search</button>
+    </form>
+    <div class="web-browser-toolbar">
+      <span class="browser-live-dot"></span><span id="webBrowserStatus">Embedded browser workspace</span>
+      <button id="webBrowserHome" class="secondary" type="button">Home</button>
+      <button id="webBrowserNewTab" class="secondary" type="button">Open in new tab</button>
+    </div>
+    <iframe id="webBrowserFrame" title="Hyperblock embedded web browser" src="about:blank" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
+    <p class="web-browser-note">Some websites, including Google Search in some browsers, block iframe embedding. If a page refuses to load, use “Open in new tab”; Hyperblock cannot override a site's security rules.</p>
+  </div>
+
   <div class="hero">
     <div>
       <p class="eyebrow">YOUR PERSONAL GAME HUB</p>
@@ -70,22 +88,6 @@ setTimeout(function(){ if(!window.__noobonly1Ready) window.__hideLoader("Taking 
     </div>
   </div>
 
-  <div class="section-head"><div><p class="eyebrow">QUICK ACCESS</p><h2>Search the web</h2></div></div>
-  <div class="web-workspace" id="webWorkspace">
-    <form id="webSearchForm" class="web-search-form">
-      <label class="sr-only" for="webSearchQuery">Search Google</label>
-      <span class="web-search-mark" aria-hidden="true">G</span>
-      <input id="webSearchQuery" class="search" type="search" placeholder="Search Google or enter a website…" autocomplete="off">
-      <button class="primary" type="submit">Search</button>
-    </form>
-    <div class="web-browser-toolbar">
-      <span class="browser-live-dot"></span><span id="webBrowserStatus">Embedded browser workspace</span>
-      <button id="webBrowserHome" class="secondary" type="button">Home</button>
-      <button id="webBrowserNewTab" class="secondary" type="button">Open in new tab</button>
-    </div>
-    <iframe id="webBrowserFrame" title="Hyperblock embedded web browser" src="about:blank" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; clipboard-read; clipboard-write"></iframe>
-    <p class="web-browser-note">Some websites, including Google Search in some browsers, block iframe embedding. If a page refuses to load, use “Open in new tab”; Hyperblock cannot override a site's security rules.</p>
-  </div>
   <div class="section-head"><div><p class="eyebrow">FEATURED</p><h2>Quick Access</h2></div></div>
   <div id="featuredGrid" class="game-grid compact"></div>
 
@@ -205,16 +207,6 @@ document.querySelector("#output").textContent = message;</textarea>
     <div id="playerStatus" class="player-status"></div>
     <iframe id="playerFrame" title="Game" allow="fullscreen; gamepad; autoplay" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups allow-forms allow-modals"></iframe>
   </div>
-</div>
-<div id="prankOverlay" class="prank-overlay" hidden aria-modal="true" role="dialog" aria-label="Google surprise">
-  <button id="prankStop" class="prank-stop">✖ STOP PRANK</button>
-  <div class="fake-google-top">Google <span>Images</span> <span>About</span></div>
-  <div class="fake-google-logo" aria-hidden="true">G<span>o</span><i>o</i><b>g</b><em>l</em><strong>e</strong></div>
-  <div class="fake-google-search">Search the web…</div>
-  <div id="prankBouncer" class="prank-bouncer">YOU ARE AN IDIOT 😂</div>
-  <div class="prank-sub">HYPERBLOCK GOT YOU 🤡</div>
-  <button id="prankSound" class="prank-sound">🔊 SOUND: OFF — TAP TO PLAY</button>
-  <p class="prank-note">It's only an animation on this page. Nothing on your device is being changed.</p>
 </div>
 <footer><span>HYPERBLOCK</span> • Game Hub • Built for mobile + desktop</footer>
 <script src="js/app.js" type="module" onerror="window.__hideLoader('Could not load js/app.js — check the file path.')"></script>
