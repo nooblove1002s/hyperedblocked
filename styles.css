@@ -172,3 +172,12 @@ body.playing{overflow:hidden}
 .loader-fallback .loader-progress{width:min(420px,75vw);height:5px;background:#ffffff12;border-radius:99px;overflow:hidden}
 .loader-fallback .loader-progress i{display:block;width:0;height:100%;background:var(--accent);transition:width .2s}
 @media(prefers-reduced-motion:reduce){.loader-fallback .loader-ring{animation:none}}
+
+
+/* Original Games tab + Neon Block Dash prototype */
+.original-game-card{padding:clamp(14px,3vw,24px);border:1px solid #16c8e844;border-radius:20px;background:linear-gradient(145deg,#10283a,#081722);box-shadow:0 20px 60px #0003}
+.original-game-header{display:flex;justify-content:space-between;gap:18px;align-items:center}.original-game-header h3{font-size:clamp(25px,4vw,38px);margin:4px 0 8px}.original-game-header p:not(.eyebrow){color:var(--muted);line-height:1.5;max-width:650px}.original-game-icon{font-size:56px;display:grid;place-items:center;width:100px;height:100px;border-radius:24px;background:#16c8e81a;flex-shrink:0}
+.original-game-stats{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}.original-game-stats span{padding:9px 13px;border-radius:10px;background:#ffffff0a;color:var(--muted)}.original-game-stats b{color:var(--accent);margin-left:5px}
+#originalGameCanvas{display:block;width:100%;height:auto;max-height:420px;aspect-ratio:15/7;border:1px solid #16c8e833;border-radius:14px;background:#07121e;touch-action:pan-y}
+.original-game-actions,.original-touch-controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.original-touch-controls{justify-content:center}.original-touch-controls button{flex:1;max-width:150px;min-height:48px;border:1px solid #16c8e84d;border-radius:12px;background:#10283a;color:#eafaff;font-weight:900;touch-action:manipulation}
+@media(max-width:600px){.original-game-header{align-items:flex-start}.original-game-icon{width:60px;height:60px;font-size:36px}.original-game-actions>*{flex:1}.original-touch-controls button{min-height:56px}}
