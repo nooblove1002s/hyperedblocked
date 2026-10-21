@@ -365,7 +365,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   let failure = null;
 
   // One broken UI feature must not block the rest of the portal
-  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupStudio, setupJS, setupSettings]){
+  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings]){
     try{ step(); }catch(e){ console.error(`${step.name} failed:`, e); }
   }
 
