@@ -1,6 +1,7 @@
 
 import { resolveData } from "./data/resolve.js";
 import { openPlayer, setupPlayer } from "./games/player.js";
+import { setupWebSearch } from "./tools/browser.js";
 // Safe localStorage: never throws (blocked storage, private mode, corrupt data)
 const ls = {
   get(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } },
@@ -50,7 +51,12 @@ function addRecent(game){
 
 function openGame(game){
   addRecent(game);
-  if(game.embed === true && game.embedUrl){ openPlayer(game); return; }
+  // Catalog games always try the in-site player first. User-added games respect
+  // the playback mode selected when they were added.
+  if(!game.custom || (game.embed === true && game.embedUrl)){
+    openPlayer({...game, embed:true, embedUrl:game.embedUrl || game.url});
+    return;
+  }
   window.open(game.url, "_blank", "noopener,noreferrer");
 }
 
@@ -88,9 +94,9 @@ function makeCard(game){
   source.className = "game-source";
   source.textContent = `Source: ${game.source}`;
   const badge = document.createElement("span");
-  const inSite = game.embed === true && !!game.embedUrl;
+  const inSite = !game.custom || (game.embed === true && !!game.embedUrl);
   badge.className = "game-badge" + (inSite ? "" : " ext");
-  badge.textContent = inSite ? "Plays here" : "External";
+  badge.textContent = inSite ? "Try in-site" : "External";
   source.append(badge);
 
   const category = document.createElement("p");
@@ -276,63 +282,7 @@ function setupGameControls(){
   });
 }
 
-function setupStudio(){
-  $$("[data-studio]").forEach(btn => btn.addEventListener("click", () => {
-    $$("[data-studio]").forEach(x => x.classList.remove("active"));
-    $$(".studio-panel").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    $(`#${btn.dataset.studio === "blocks" ? "blocksPanel" : "scenePanel"}`).classList.add("active");
-  }));
-
-  $$("[data-block]").forEach(btn => btn.addEventListener("click", () => {
-    const block = document.createElement("div");
-    block.className = "script-block";
-    const names = {
-      event:"🟨 WHEN GAME STARTS",
-      move:"🟦 MOVE PLAYER",
-      rotate:"🟪 ROTATE OBJECT",
-      wait:"🟧 WAIT 1 SECOND",
-      if:"🟥 IF / THEN",
-      sound:"🟩 PLAY SOUND",
-      score:"⭐ CHANGE SCORE",
-      repeat:"🔁 REPEAT"
-    };
-    block.textContent = names[btn.dataset.block] || "BLOCK";
-    $("#blockCanvas").querySelector(".empty-state")?.remove();
-    $("#blockCanvas").append(block);
-  }));
-
-  $("#objectScale")?.addEventListener("input", e => {
-    const n = Number(e.target.value);
-    $("#sceneCube").style.width = `${100*n}px`;
-    $("#sceneCube").style.height = `${100*n}px`;
-  });
-
-  $("#objectRotation")?.addEventListener("input", e => {
-    $("#sceneCube").style.transform = `translate(-50%,-50%) rotateX(25deg) rotateY(${e.target.value}deg)`;
-  });
-
-  $("#objectName")?.addEventListener("input", e => {
-    e.target.setAttribute("aria-label", `Object name: ${e.target.value}`);
-  });
-
-  $("#addCube")?.addEventListener("click", () => {
-    const cube = $("#sceneCube").cloneNode(true);
-    cube.style.left = `${35 + Math.random()*30}%`;
-    cube.style.top = `${30 + Math.random()*35}%`;
-    cube.style.transform = "translate(-50%,-50%) rotateX(25deg) rotateY(35deg) scale(.7)";
-    $("#sceneView").append(cube);
-  });
-
-  $("#runScene")?.addEventListener("click", () => {
-    const cube = $("#sceneCube");
-    cube.animate([
-      {transform:"translate(-50%,-50%) rotateX(25deg) rotateY(0deg) scale(1)"},
-      {transform:"translate(-50%,-65%) rotateX(70deg) rotateY(360deg) scale(1.08)"},
-      {transform:"translate(-50%,-50%) rotateX(25deg) rotateY(720deg) scale(1)"}
-    ], {duration:900,easing:"ease-in-out"});
-  });
-}
+// The real 3D editor is implemented in js/studio/studio.js and loaded on demand.
 
 function setupJS(){
   $("#runJS")?.addEventListener("click", () => {
@@ -415,7 +365,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   let failure = null;
 
   // One broken UI feature must not block the rest of the portal
-  for(const step of [setupPlayer, setupNavigation, setupGameControls, setupStudio, setupJS, setupSettings]){
+  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings]){
     try{ step(); }catch(e){ console.error(`${step.name} failed:`, e); }
   }
 
@@ -441,39 +391,3 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   }
 });
 
-// Opt-in Google-style prank Easter egg: animation stays inside the page and has a clear stop.
-function setupGooglePrank(){
-  const trigger = document.getElementById('fakeGoogleTrigger');
-  const overlay = document.getElementById('prankOverlay');
-  const stop = document.getElementById('prankStop');
-  const soundButton = document.getElementById('prankSound');
-  if(!trigger || !overlay || !stop || !soundButton) return;
-  let audioCtx = null, soundTimer = null, soundOn = false;
-  function stopSound(){
-    soundOn = false;
-    if(soundTimer) clearInterval(soundTimer);
-    soundTimer = null;
-    if(audioCtx){ audioCtx.close().catch(()=>{}); audioCtx = null; }
-    soundButton.textContent = '🔊 SOUND: OFF — TAP TO PLAY';
-  }
-  function closePrank(){ stopSound(); overlay.hidden = true; trigger.focus(); }
-  trigger.addEventListener('click',()=>{ overlay.hidden = false; stopSound(); stop.focus(); });
-  stop.addEventListener('click',closePrank);
-  soundButton.addEventListener('click',()=>{
-    if(soundOn){ stopSound(); return; }
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if(!AudioContext){ soundButton.textContent='Audio is not supported in this browser'; return; }
-    audioCtx = new AudioContext(); soundOn = true;
-    soundButton.textContent = '🔇 STOP SOUND';
-    const beep = ()=>{
-      if(!audioCtx || audioCtx.state === 'closed') return;
-      const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-      osc.type = 'square'; osc.frequency.value = 520 + Math.random()*1000;
-      gain.gain.value = 0.12; // deliberately capped; browser/system volume remains in control
-      osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.12);
-    };
-    beep(); soundTimer = setInterval(beep, 180);
-  });
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !overlay.hidden) closePrank(); });
-}
-setupGooglePrank();
