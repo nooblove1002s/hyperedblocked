@@ -357,7 +357,7 @@ function startLoader(){
     else text.textContent="Checking portal files…";
   },80);
   window.__loaderTimer = timer;
-  return ()=>{clearInterval(timer);bar.style.width="100%";text.textContent="Ready!";setTimeout(()=>$("#loader")?.classList.add("hidden"),250)};
+  return ()=>{clearInterval(timer);bar.style.width="100%";text.textContent="Ready!";if(window.__hideLoader) window.__hideLoader();else $("#loader")?.classList.add("hidden")};
 }
 
 document.addEventListener("DOMContentLoaded", async ()=>{
