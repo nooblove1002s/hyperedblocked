@@ -44,9 +44,11 @@ export function openPlayer(game){
   if(!valid){ f.onload = null; f.src = "about:blank"; return fail("This game's embed link isn't valid (it must be an https link on another site)."); }
   f.onload = () => {
     clearTimeout(timer);
-    // A cross-origin iframe load event does not prove the game rendered.
-    // Keep the external fallback visible in case framing was blocked.
-    showStatus("If the game area is blank or stuck, open it in a new tab.");
+    // The old status overlay stayed on top of the iframe after load, hiding
+    // games that had actually loaded. Hide it so the embedded game is usable.
+    s.hidden = true;
+    s.className = "player-status";
+    s.replaceChildren();
   };
   // Some sites block framing without firing an error, so a timeout is an extra hint.
   timer = setTimeout(() => fail("This game is taking a while. The provider may block embedding."), 12000);
