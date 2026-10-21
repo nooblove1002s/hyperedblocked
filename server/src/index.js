@@ -25,7 +25,7 @@ function hashPassword(password,salt=randomBytes(16).toString("hex")){return {sal
 function publicRoom(room){
   return {id:room.id,name:room.name,description:room.description,kind:room.kind,visibility:room.visibility,region:room.region,ownerName:room.ownerName,maxPlayers:room.maxPlayers,playerCount:room.players.size,createdAt:room.createdAt};
 }
-function publicRooms(){return [...rooms.values()].filter(r=>r.visibility==="public"&&r.players.size>0).map(publicRoom).sort((a,b)=>b.playerCount-a.playerCount);}
+function publicRooms(){return [...rooms.values()].filter(r=>r.visibility==="public"&&(r.players.size>0||r.kind==="official")).map(publicRoom).sort((a,b)=>b.playerCount-a.playerCount);}
 function counts(){const active=[...rooms.values()].filter(r=>r.players.size>0);return {players:active.reduce((n,r)=>n+r.players.size,0),servers:active.length,openSlots:active.reduce((n,r)=>n+Math.max(0,r.maxPlayers-r.players.size),0)};}
 function broadcast(){
   io.emit("server:list",{servers:publicRooms()});
@@ -40,6 +40,7 @@ function join(socket,payload,callback=()=>{}){
   const roomId=cleanText(payload?.roomId,80);
   const room=rooms.get(roomId);
   if(!room)return callback({ok:false,error:"Room not found or no longer active."});
+  if(socketRoom.get(socket.id)===room.id)return callback({ok:true,room:publicRoom(room)});
   if(room.visibility==="private"&&(!room.passwordHash||!payload?.password||!safeEqual(hashPassword(String(payload.password),room.passwordHash.salt).hash,room.passwordHash.hash)))return callback({ok:false,error:"Incorrect private-room password."});
   if(!room.players.has(socket.id)&&room.players.size>=room.maxPlayers)return callback({ok:false,error:"This server is full."});
   removeSocketFromRoom(socket.id);
@@ -56,6 +57,16 @@ function rateLimit(socket,event,limit=8,windowMs=10000){
   socket.data.rates={...(socket.data.rates||{}),[key]:[...recent,now]};return true;
 }
 app.get("/health",(req,res)=>res.json({ok:true,service:"hyperblock-server-browser",time:new Date().toISOString()}));
+app.post("/api/admin/servers",(req,res)=>{
+  const configured=process.env.ADMIN_API_KEY;
+  const supplied=req.get("x-admin-key")||"";
+  if(!configured||!safeEqual(supplied,configured))return res.status(401).json({error:"Unauthorized"});
+  const maxPlayers=Number(req.body?.maxPlayers??20);
+  if(!Number.isInteger(maxPlayers)||maxPlayers<1||maxPlayers>MAX_ROOM_LIMIT)return res.status(400).json({error:"maxPlayers must be between 1 and "+MAX_ROOM_LIMIT});
+  const id=cleanText(req.body?.id,80)||"official-"+randomUUID();
+  const room={id,name:cleanText(req.body?.name,64,"Official Server")||"Official Server",description:cleanText(req.body?.description,180),kind:"official",visibility:"public",region:cleanText(req.body?.region,32,"Auto")||"Auto",ownerName:"HYPERBLOCK OFFICIAL",maxPlayers,players:new Map(),createdAt:new Date().toISOString(),passwordHash:null};
+  rooms.set(id,room);broadcast();res.status(201).json({ok:true,server:publicRoom(room)});
+});
 app.get("/api/servers",(req,res)=>res.set("Cache-Control","no-store").json({servers:publicRooms()}));
 app.get("/api/stats",(req,res)=>res.set("Cache-Control","no-store").json(counts()));
 app.get("/",(req,res)=>res.type("text").send("Hyperblock multiplayer room API is running. See /health and /api/servers."));
