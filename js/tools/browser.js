@@ -3,7 +3,7 @@
 const $ = (selector) => document.querySelector(selector);
 export function setupWebSearch(){
   const form=$("#webSearchForm"), input=$("#webSearchQuery"), frame=$("#webBrowserFrame");
-  const status=$("#webBrowserStatus"), openTab=$("#webBrowserNewTab"), home=$("#webBrowserHome");
+  const status=$("#webBrowserStatus"), openTab=$("#webBrowserNewTab"), home=$("#webBrowserHome"), engine=$("#webSearchEngine");
   if(!form || !input || !frame || !status) return;
   let currentUrl="https://www.google.com/webhp?igu=1";
   const setPage=(url,label)=>{
@@ -17,10 +17,13 @@ export function setupWebSearch(){
     const query=input.value.trim();
     if(!query) return;
     const isUrl=/^(https?:\/\/|[\w-]+\.[a-z]{2,})(\/|$)/i.test(query);
+    const selected=engine?.value || "google";
     const url=isUrl
       ? (/^https?:\/\//i.test(query)?query:"https://"+query)
-      : "https://www.google.com/search?igu=1&q="+encodeURIComponent(query);
-    setPage(url,isUrl?"Trying to open website inside Hyperblock…":"Trying to show Google results inside Hyperblock…");
+      : selected === "duckduckgo"
+        ? "https://duckduckgo.com/?q="+encodeURIComponent(query)+"&ia=web"
+        : "https://www.google.com/search?igu=1&q="+encodeURIComponent(query);
+    setPage(url,isUrl?"Trying to open website inside Hyperblock…":`Trying ${selected === "duckduckgo" ? "DuckDuckGo" : "Google"} results inside Hyperblock…`);
   });
   frame.addEventListener("load",()=>{
     // Cross-origin security prevents us from checking the actual document content.
