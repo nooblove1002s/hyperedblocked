@@ -86,12 +86,13 @@ async function connect(root){
   try{
     await loadSocketClient();
     socket=window.io(base,{transports:["websocket","polling"],timeout:6000,reconnection:true});
+    window.HyperblockSocket=socket;
     socket.on("connect",()=>{
       connected=true;showStatus(root,"Connected · live updates enabled",true);
       let clientId=localStorage.getItem("hyperblock-client-id");
       if(!clientId){clientId=window.crypto?.randomUUID?.()||("hb-"+Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem("hyperblock-client-id",clientId);}
       const identity=window.HyperblockIdentity||{};
-      if(!identity.offline) socket.emit("profile:set",{clientId:identity.clientId||clientId,name:identity.name||"Player-"+clientId.slice(0,6)},response=>{if(response?.ok&&response.id){identity.id=response.id;window.HyperblockIdentity=identity;}});
+      if(!identity.offline) socket.emit("profile:set",{clientId:identity.clientId||clientId,name:identity.name||"Player-"+clientId.slice(0,6)},response=>{if(response?.ok&&response.id){identity.id=response.id;identity.isAdmin=response.isAdmin===true;window.HyperblockIdentity=identity;}});
       fetchServers(root);
     });
     socket.on("disconnect",()=>{connected=false;showStatus(root,"Disconnected · retrying",false);});
