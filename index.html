@@ -86,8 +86,7 @@ document.addEventListener("DOMContentLoaded", function(){
     <button data-page="home">Home</button>
     <button data-page="games">Games</button>
     <button data-page="original">Original</button>
-    <button data-page="advancedStudio">Advanced Studio</button>
-    <button data-page="studio">OG Studio</button>
+    <button data-page="studio">Game Studio</button>
     <button data-page="tools">Tools</button>
     <button data-page="settings">Settings</button>
   </nav>
@@ -98,8 +97,7 @@ document.addEventListener("DOMContentLoaded", function(){
   <button data-page="home">🏠 Home</button>
   <button data-page="games">🎮 Games</button>
   <button data-page="original">🟧 Original</button>
-  <button data-page="advancedStudio">🚀 Advanced Studio</button>
-  <button data-page="studio">🧩 OG Studio</button>
+  <button data-page="studio">🧩 Game Studio</button>
   <button data-page="tools">💻 Tools</button>
   <button data-page="settings">⚙️ Settings</button>
 </div>
@@ -131,8 +129,7 @@ document.addEventListener("DOMContentLoaded", function(){
       <p class="hero-copy">A fast, mobile-friendly gaming portal with a searchable library, favorites, recently played games, game-source hubs, a JavaScript lab, block scripting, a starter 3D scene editor, and deep customization.</p>
       <div class="hero-actions">
         <button class="primary" data-page="games">🎮 Browse Games</button>
-        <button class="secondary" data-page="advancedStudio">🚀 Advanced Studio</button>
-        <button class="secondary" data-page="studio">🧩 OG Studio</button>
+        <button class="secondary" data-page="studio">🧩 Open Studio</button>
       </div>
       <div class="stats">
         <div><b id="gameCount">0</b><span>Games / hubs</span></div>
@@ -190,31 +187,6 @@ document.addEventListener("DOMContentLoaded", function(){
   <p class="muted">Games in this tab are built for Hyperblock. Your first playable prototype is below. Multiplayer room discovery and live presence are being built alongside the original game; real-time gameplay synchronization is a separate next step.</p>
   <p class="muted">Choose Physics Battle Lab to launch the built-in physics combat sandbox. More Hyperblock Originals can be added here later.</p>
 
-</section>
-
-<section id="advancedStudio" class="page">
-  <div class="advanced-hero">
-    <div><p class="eyebrow">HYPERBLOCK CREATOR</p><h2>Advanced Studio</h2><p>Build a 3D scene with real WebGL objects, edit object properties, save projects on this device, and export your scene.</p></div>
-    <div class="advanced-hero-mark">HB<span>3D</span></div>
-  </div>
-  <div class="advanced-toolbar">
-    <label class="advanced-project-label">PROJECT <input id="advProjectName" value="My First Game" maxlength="80" aria-label="Advanced Studio project name"></label>
-    <button id="advSave" class="primary">💾 Save</button>
-    <button id="advPlay" class="secondary">▶ Preview</button>
-    <button id="advExport" class="secondary">⬇ Export</button>
-    <label class="secondary adv-import-label">⬆ Import<input id="advImport" type="file" accept=".json,application/json" hidden></label>
-    <button id="advBackClassic" class="secondary">Open OG Studio ↗</button>
-  </div>
-  <div class="advanced-editor">
-    <aside class="advanced-panel"><div class="advanced-panel-head"><b>OBJECTS</b><span id="advObjectCount">0 objects</span></div>
-      <div class="advanced-add-grid"><button data-adv-add="box">＋ Box</button><button data-adv-add="sphere">＋ Sphere</button><button data-adv-add="cone">＋ Cone</button><button data-adv-add="plane">＋ Ground</button></div>
-      <div id="advHierarchy" class="advanced-hierarchy"></div>
-      <div class="advanced-panel-foot">Tap an object to select it. Drag in the viewport to orbit; pinch or scroll to zoom.</div>
-    </aside>
-    <div class="advanced-viewport-wrap"><div class="advanced-viewport-top"><span><i></i> 3D SCENE</span><span id="advViewportStatus">EDIT MODE</span></div><div id="advViewport" class="advanced-viewport" aria-label="3D scene viewport"></div><div class="advanced-viewport-foot"><span>Orbit: drag</span><span>Zoom: pinch / wheel</span><span>Selection: tap object</span></div></div>
-    <aside class="advanced-panel advanced-inspector"><div class="advanced-panel-head"><b>INSPECTOR</b><span id="advSelectedName">Nothing selected</span></div><div id="advInspector" class="advanced-inspector-body"><p class="muted">Select an object to edit its properties.</p></div><button id="advDelete" class="danger-btn">Delete selected object</button></aside>
-  </div>
-  <p id="advMessage" class="advanced-message" role="status" aria-live="polite">Advanced Studio ready. Add an object to begin.</p>
 </section>
 
 <section id="studio" class="page">
