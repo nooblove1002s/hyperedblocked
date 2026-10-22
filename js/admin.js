@@ -1,3 +1,4 @@
+import { BACKEND_URL } from "./config.js";
 const STYLE = `
 .admin-wrap{color:var(--text)}.ad-hero{padding:26px;border:1px solid var(--border);border-radius:20px;background:linear-gradient(130deg,#122b43,#101725);margin-bottom:18px}
 .ad-hero h2{margin:8px 0}.ad-muted{color:var(--muted);line-height:1.5}.ad-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.ad-input{min-width:0;flex:1;padding:12px;border-radius:10px;border:1px solid var(--border);background:#ffffff09;color:var(--text)}.ad-panel{padding:18px;border:1px solid var(--border);border-radius:16px;background:#ffffff05;margin:14px 0}.ad-list{display:grid;gap:10px}.ad-person{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px;border:1px solid var(--border);border-radius:12px;background:#ffffff05}.ad-person strong{display:block}.ad-person small{color:var(--muted);overflow-wrap:anywhere}.ad-status{margin-top:12px;color:var(--muted);font-size:13px;min-height:20px}.ad-danger{background:#7b2635!important;color:#fff!important}.ad-switch{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid #ff8c8c55;border-radius:12px}.ad-glitch-note{font-size:12px;color:var(--muted);line-height:1.5}
@@ -8,7 +9,7 @@ body.hb-corrupted{animation:hbColorShift 2.5s steps(2,end) infinite}body.hb-corr
 let adminSocket=null,refreshTimer=null;
 const $=(root,selector)=>root.querySelector(selector);
 const escapeHTML=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-function backend(root){return ($(root,"#adBackend").value.trim()||localStorage.getItem("hyperblock-server-backend")||"").replace(/\/$/,"");}
+function backend(root){return ($(root,"#adBackend").value.trim()||BACKEND_URL).replace(/\/$/,"");}
 function key(root){return $(root,"#adKey").value.trim();}
 async function api(root,path,options={}){
  const base=backend(root);if(!base)throw new Error("Enter the deployed multiplayer backend URL first.");
@@ -100,8 +101,8 @@ export function initAdmin(){
  document.querySelector("main")?.append(section);
  document.querySelectorAll('[data-page="admin"]').forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="adminCenter"));document.querySelectorAll(".desktop-nav button").forEach(x=>x.classList.toggle("active",x===b));document.getElementById("mobileMenu")?.classList.remove("open");window.scrollTo({top:0,behavior:"smooth"});}));
  const root=section;
- $(root,"#adBackend").value=localStorage.getItem("hyperblock-server-backend")||"";
- $(root,"#adLogin").addEventListener("click",async()=>{if(!key(root)){status(root,"Enter the admin secret configured on the backend.");return;}try{await api(root,"/api/admin/people");localStorage.setItem("hyperblock-server-backend",backend(root));status(root,"Admin authentication successful.");await watchCorruption(root);await refresh(root);}catch(e){status(root,e.message);}});
+ $(root,"#adBackend").value=BACKEND_URL;
+ $(root,"#adLogin").addEventListener("click",async()=>{if(!key(root)){status(root,"Enter the admin secret configured on the backend.");return;}try{await api(root,"/api/admin/people");status(root,"Admin authentication successful.");await watchCorruption(root);await refresh(root);}catch(e){status(root,e.message);}});
  $(root,"#adRefresh").addEventListener("click",()=>refresh(root));
  $(root,"#adCorruptOn").addEventListener("click",()=>setCorruption(root,true));
  $(root,"#adCorruptOff").addEventListener("click",()=>setCorruption(root,false));
