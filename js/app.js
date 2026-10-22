@@ -381,12 +381,19 @@ function startLoader(){
 document.addEventListener("DOMContentLoaded", async ()=>{
   const finish = startLoader();
   let failure = null;
-  try{ await requireIdentity(); }catch(error){ console.error("Player identity setup failed:",error); }
 
-  // One broken UI feature must not block the rest of the portal
+  // Wire the portal controls before waiting on identity or the multiplayer API.
+  // A slow/unavailable identity backend must not delay navigation and local tools.
   for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings, loadSpinArena, initServerBrowser, initAdmin]){
     try{ step(); }catch(e){ console.error(`${step.name} failed:`, e); }
   }
+
+  // Identity is needed for multiplayer features, not for basic portal navigation.
+  // Run it after the controls are wired so the rest of the app can initialize.
+  const identityReady = requireIdentity().catch(error=>{
+    console.error("Player identity setup failed:",error);
+    return null;
+  });
 
   try{
     await loadGames();
@@ -408,5 +415,8 @@ document.addEventListener("DOMContentLoaded", async ()=>{
     }
     window.__noobonly1Ready = true;
   }
+
+  // Keep a reference to avoid treating identity setup as a blocking startup step.
+  await identityReady;
 });
 
