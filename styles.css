@@ -182,3 +182,6 @@ body.playing{overflow:hidden}
 #originalGameCanvas{display:block;width:100%;height:auto;max-height:420px;aspect-ratio:15/7;border:1px solid #16c8e833;border-radius:14px;background:#07121e;touch-action:pan-y}
 .original-game-actions,.original-touch-controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.original-touch-controls{justify-content:center}.original-touch-controls button{flex:1;max-width:150px;min-height:48px;border:1px solid #16c8e84d;border-radius:12px;background:#10283a;color:#eafaff;font-weight:900;touch-action:manipulation}
 @media(max-width:600px){.original-game-header{align-items:flex-start}.original-game-icon{width:60px;height:60px;font-size:36px}.original-game-actions>*{flex:1}.original-touch-controls button{min-height:56px}}
+
+/* YouTube fallback is used only if the bundled intro video is missing. */
+.intro-frame{border:0;pointer-events:auto}
