@@ -67,6 +67,11 @@ const socketProfiles=new Map();
 const bannedClientIds=new Map();
 let corruptionEnabled=false;
 function adminAuth(req,res,next){
+  // Player (1) is the built-in owner/admin. This uses the registered browser
+  // identity; all other players still need the server-side admin secret.
+  const clientId=cleanText(req.get("x-hyperblock-client-id"),100);
+  const playerOne=registeredPeople.find(p=>p.id===1&&p.clientId===clientId);
+  if(playerOne)return next();
   const configured=process.env.ADMIN_API_KEY||"";
   const supplied=req.get("x-admin-key")||"";
   if(!configured||!safeEqual(supplied,configured))return res.status(401).json({error:"Admin authentication failed."});
@@ -148,7 +153,7 @@ app.post("/api/identity/register",async(req,res)=>{
     registeredPeople.push(person);
     try{await persistRegisteredPeople()}catch(error){registeredPeople=registeredPeople.filter(p=>p.clientId!==clientId);nextPersonId=Math.max(0,...registeredPeople.map(p=>p.id))+1;return res.status(500).json({error:"Could not save the private player registry. Check backend storage permissions."});}
   }
-  res.set("Cache-Control","no-store").json({ok:true,id:person.id,name:person.name,clientId:person.clientId});
+  res.set("Cache-Control","no-store").json({ok:true,id:person.id,name:person.name,clientId:person.clientId,isAdmin:person.id===1});
 });
 app.get("/api/admin/people",adminAuth,(req,res)=>res.set("Cache-Control","no-store").json({people:publicPeople(),registeredPeople:publicRegisteredPeople(),corruptionEnabled}));
 app.post("/api/admin/ban",adminAuth,(req,res)=>{
