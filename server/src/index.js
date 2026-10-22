@@ -239,14 +239,38 @@ io.on("connection",socket=>{
     io.emit("chat:global:message",message);
     callback({ok:true});
   });
+  socket.on("chat:room:send",(payload,callback=()=>{})=>{
+    const profile=socketProfiles.get(socket.id),roomId=socketRoom.get(socket.id);
+    if(!profile?.id)return callback({ok:false,error:"Register your profile before using room chat."});
+    if(!roomId||!rooms.has(roomId))return callback({ok:false,error:"Join a multiplayer server first to use Room Chat."});
+    if(profile.clientId&&bannedClientIds.has(profile.clientId))return callback({ok:false,error:"This player is banned from chat."});
+    if(!rateLimit(socket,"chat-room",6,10000))return callback({ok:false,error:"Slow down before sending more room messages."});
+    let text=cleanText(payload?.text,500);
+    if(!text)return callback({ok:false,error:"Write a message first."});
+    const aliasCommand=text.match(/^\*#([A-Za-z0-9_-]{1,24})$/);
+    if(aliasCommand){profile.alias=aliasCommand[1];socketProfiles.set(socket.id,profile);return callback({ok:true,alias:profile.alias,message:"Display alias changed to "+profile.alias+"."});}
+    const aliasAndText=text.match(/^\*#([A-Za-z0-9_-]{1,24})\s+([\s\S]+)$/);
+    if(aliasAndText){profile.alias=aliasAndText[1];text=aliasAndText[2].trim();socketProfiles.set(socket.id,profile);}
+    let size=3;
+    const sizeCommand=text.match(/^##([1-5])(?:\s+|$)([\s\S]*)$/);
+    if(sizeCommand){size=Number(sizeCommand[1]);text=sizeCommand[2].trim();}
+    if(!text)return callback({ok:false,error:"Add some text after the size command."});
+    const message={id:randomUUID(),name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,text,size,at:new Date().toISOString()};
+    io.to(roomId).emit("chat:room:message",message);
+    callback({ok:true});
+  });
   socket.on("chat:dm:send",(payload,callback=()=>{})=>{
     const sender=socketProfiles.get(socket.id);
     if(!sender?.id)return callback({ok:false,error:"Register your Hyperblock profile before sending private messages."});
     if(sender.clientId&&bannedClientIds.has(sender.clientId))return callback({ok:false,error:"This player is banned from chat."});
     if(!rateLimit(socket,"chat-dm",6,10000))return callback({ok:false,error:"Slow down before sending more private messages."});
     const target=cleanText(payload?.target,80).toLowerCase();
-    const text=cleanText(payload?.text,500);
+    let text=cleanText(payload?.text,500);
     if(!target||!text)return callback({ok:false,error:"Choose a player and write a message."});
+    const aliasCommand=text.match(/^\*#([A-Za-z0-9_-]{1,24})$/);
+    if(aliasCommand){sender.alias=aliasCommand[1];socketProfiles.set(socket.id,sender);return callback({ok:true,alias:sender.alias,message:"Display alias changed to "+sender.alias+"."});}
+    const aliasAndText=text.match(/^\*#([A-Za-z0-9_-]{1,24})\s+([\s\S]+)$/);
+    if(aliasAndText){sender.alias=aliasAndText[1];text=aliasAndText[2].trim();socketProfiles.set(socket.id,sender);}
     const recipient=registeredPeople.find(p=>String(p.id)===target||p.name.toLowerCase()===target);
     if(!recipient)return callback({ok:false,error:"No player matches that ID or exact username."});
     if(recipient.id===sender.id)return callback({ok:false,error:"Choose another player for a private message."});
