@@ -3,6 +3,8 @@ import express from "express";
 import cors from "cors";
 import { createServer } from "node:http";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { Server } from "socket.io";
 
 const PORT = Number(process.env.PORT || 3000);
@@ -14,6 +16,32 @@ app.use(cors({origin(origin,callback){if(!origin||allowedOrigins.includes(origin
 app.use(express.json({limit:"12kb"}));
 const httpServer=createServer(app);
 const io=new Server(httpServer,{cors:{origin:allowedOrigins,methods:["GET","POST"]},maxHttpBufferSize:1e5,connectTimeout:10000});
+const DATA_DIR=path.resolve(process.env.HYPERBLOCK_DATA_DIR||"./data");
+const PEOPLE_FILE=path.join(DATA_DIR,"people.json");
+let registeredPeople=[];
+let nextPersonId=1;
+let peopleWrite=Promise.resolve();
+async function loadRegisteredPeople(){
+  await mkdir(DATA_DIR,{recursive:true});
+  try{
+    const parsed=JSON.parse(await readFile(PEOPLE_FILE,"utf8"));
+    registeredPeople=Array.isArray(parsed.people)?parsed.people.filter(p=>Number.isInteger(p.id)&&typeof p.name==="string"&&typeof p.clientId==="string"): [];
+    nextPersonId=Math.max(0,...registeredPeople.map(p=>p.id))+1;
+  }catch(error){
+    if(error.code!=="ENOENT")console.error("Could not read private people registry:",error.message);
+    registeredPeople=[];
+    nextPersonId=1;
+    await persistRegisteredPeople();
+  }
+}
+function persistRegisteredPeople(){
+  const snapshot=JSON.stringify({version:1,people:registeredPeople},null,2);
+  peopleWrite=peopleWrite.then(async()=>{await mkdir(DATA_DIR,{recursive:true});await writeFile(PEOPLE_FILE,snapshot,{encoding:"utf8",mode:0o600});});
+  return peopleWrite;
+}
+function publicRegisteredPeople(){
+  return registeredPeople.map(({id,name,createdAt})=>({id,name,createdAt}));
+}
 const rooms=new Map();
 // Permanent public entry point. Store the oversized capacity as a string so JSON
 // preserves every digit exactly; capacity comparisons coerce it to Number safely
@@ -144,7 +172,9 @@ io.on("connection",socket=>{
       callback({ok:false,error:"This player is banned from Hyperblock multiplayer."});
       socket.disconnect(true);return;
     }
-    socketProfiles.set(socket.id,{name,clientId});callback({ok:true});
+    const person=registeredPeople.find(p=>p.clientId===clientId);
+    if(!person){callback({ok:false,error:"Register your Hyperblock name before connecting."});socket.disconnect(true);return;}
+    socketProfiles.set(socket.id,{name:person.name,clientId,id:person.id});callback({ok:true,id:person.id,name:person.name});
   });
   socket.on("room:create",(payload,callback=()=>{})=>{
     if(!rateLimit(socket,"create",5))return callback({ok:false,error:"Too many room creations. Wait a moment."});
@@ -173,4 +203,5 @@ const cleanup=setInterval(()=>{
   broadcast();
 },15000);
 cleanup.unref();
+await loadRegisteredPeople();
 httpServer.listen(PORT,()=>console.log("Hyperblock server browser listening on port",PORT));
