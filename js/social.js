@@ -47,6 +47,8 @@ function loadSocketClient(){
   window.__hyperblockSocketClientPromise=new Promise((resolve,reject)=>{const s=document.createElement("script");s.src="https://cdn.socket.io/4.8.1/socket.io.min.js";s.onload=resolve;s.onerror=()=>reject(new Error("Could not load the chat networking client."));document.head.append(s);});
   return window.__hyperblockSocketClientPromise;
 }
+function getBlockedPlayers(){try{const v=JSON.parse(localStorage.getItem('hyperblock-chat-blocked')||'[]');return Array.isArray(v)?v.map(Number).filter(Number.isFinite):[]}catch{return[]}}
+function saveBlockedPlayers(ids){try{localStorage.setItem('hyperblock-chat-blocked',JSON.stringify([...new Set(ids)]));return true}catch{return false}}
 function setStatus(text){const el=$("#hbSocialStatus",root);if(el)el.textContent=text;}
 function setMode(mode){
   currentMode=mode;
@@ -59,7 +61,8 @@ function setMode(mode){
 function displayName(message){return message.alias||message.name||"Player";}
 function renderMessages(){
   const box=$("#hbSocialMessages",root);if(!box)return;
-  const list=history[currentMode]||[];
+  const blocked=getBlockedPlayers();
+  const list=(history[currentMode]||[]).filter(m=>!blocked.includes(Number(m.playerId)));
   box.replaceChildren();
   if(!list.length){const p=document.createElement("p");p.className="hb-social-empty";p.textContent=currentMode==="dm"?"Your private messages will appear here. Enter a player ID or name to start.":"No messages yet. Say hello to everyone online.";box.append(p);return;}
   for(const m of list){
@@ -70,7 +73,17 @@ function renderMessages(){
     if(m.badge){const badge=document.createElement("span");badge.className="hb-chat-badge";badge.textContent=m.badge;const colors={cyan:"#20d7ee",orange:"#ff9c45",purple:"#c59bff",green:"#5ee6a8",pink:"#ff83c4",white:"#effaff"};badge.style.color=colors[m.badgeColor]||colors.cyan;badge.style.backgroundColor=(colors[m.badgeColor]||colors.cyan)+"22";meta.append(badge);}
     if(currentMode==="dm"&&m.toName){const to=document.createElement("span");to.textContent=" → "+m.toName;meta.append(to);}
     const body=document.createElement("div");body.className="hb-chat-body hb-chat-size-"+Math.max(1,Math.min(5,Number(m.size)||3));body.textContent=m.text||"";
-    card.append(meta,body);box.append(card);
+    card.append(meta,body);
+    const ownId=Number(window.HyperblockIdentity?.id);
+    if(m.playerId&&Number(m.playerId)!==ownId){
+      const actions=document.createElement("div");actions.className="hb-chat-actions";
+      const block=document.createElement("button");block.type="button";block.textContent=blocked.includes(Number(m.playerId))?"Unblock":"Block";
+      block.addEventListener("click",()=>{const ids=getBlockedPlayers();const next=ids.includes(Number(m.playerId))?ids.filter(id=>id!==Number(m.playerId)):[...ids,Number(m.playerId)];if(saveBlockedPlayers(next)){setStatus(next.includes(Number(m.playerId))?"Player blocked on this device.":"Player unblocked.");renderMessages();}});
+      const report=document.createElement("button");report.type="button";report.textContent="Report";
+      report.addEventListener("click",()=>{const reason=window.prompt("Why are you reporting this message?","Spam or inappropriate message");if(reason===null)return;if(!socket?.connected)return setStatus("Connect to the server before reporting.");socket.emit("chat:report:send",{messageId:m.id,reason},res=>setStatus(res?.ok?"Report sent to Hyperblock moderation.":res?.error||"Report failed."));});
+      actions.append(block,report);card.append(actions);
+    }
+    box.append(card);
   }
   box.scrollTop=box.scrollHeight;
 }
@@ -156,7 +169,7 @@ export function initSocial(){
   <form class="hb-chat-compose" id="hbChatForm"><input id="hbChatInput" maxlength="500" autocomplete="off" placeholder="Write a message… (##5 makes it huge)" required><button type="submit">Send</button></form>
   <div class="hb-chat-tools"><label>Text size<select id="hbChatSize"><option value="3">Normal</option><option value="1">##1 Small</option><option value="2">##2 Medium-small</option><option value="4">##4 Large</option><option value="5">##5 Extra large</option></select></label><span class="hb-social-muted">Commands: ##1–##5 · alias: *#player2</span></div></div>
   <aside class="hb-social-panel hb-social-side"><h3>Chat settings</h3><label><input id="hbAnnounceSounds" type="checkbox"> Enable admin announcement sounds</label><p class="hb-social-muted">Sounds only apply to admin announcements. Your browser may require a tap before audio can play.</p>
-  <div id="hbAnnouncePanel" hidden><hr><h3>Admin announcement</h3><label>Title<input id="hbAnnTitle" maxlength="80" value="HYPERBLOCK ANNOUNCEMENT"></label><label>Message<input id="hbAnnText" maxlength="280" placeholder="Announcement text"></label><label>Style<select id="hbAnnStyle"><option value="futuristic">Futuristic</option><option value="neon">Neon</option><option value="glitch">Glitch</option><option value="horror">Horror</option><option value="custom">Custom / clean</option></select></label><label>Sound<select id="hbAnnSound"><option value="futuristic">Futuristic tone</option><option value="glitch">Glitch tone</option><option value="horror">Horror tone</option><option value="silent">Silent</option></select></label><button type="button" id="hbAnnSend">Send global announcement</button><hr><h3>Assign player badge</h3><label>Player ID or exact username<input id="hbBadgeTarget" maxlength="80" placeholder="e.g. 67istheworst or 2"></label><label>Badge text (blank clears)<input id="hbBadgeText" maxlength="16" placeholder="TUFF"></label><label>Badge color<select id="hbBadgeColor"><option value="cyan">Cyan</option><option value="orange">Orange</option><option value="purple">Purple</option><option value="green">Green</option><option value="pink">Pink</option><option value="white">White</option></select></label><button type="button" id="hbBadgeAssign">Save player badge</button></div>
+  <div id="hbAnnouncePanel" hidden><hr><h3>Admin announcement</h3><label>Title<input id="hbAnnTitle" maxlength="80" value="HYPERBLOCK ANNOUNCEMENT"></label><label>Message<input id="hbAnnText" maxlength="280" placeholder="Announcement text"></label><label>Style<select id="hbAnnStyle"><option value="futuristic">Futuristic</option><option value="neon">Neon</option><option value="glitch">Glitch</option><option value="horror">Horror</option><option value="custom">Custom / clean</option></select></label><label>Sound<select id="hbAnnSound"><option value="futuristic">Futuristic tone</option><option value="glitch">Glitch tone</option><option value="horror">Horror tone</option><option value="silent">Silent</option></select></label><button type="button" id="hbAnnSend">Send global announcement</button><hr><h3>Assign player badge</h3><label>Player ID or exact username<input id="hbBadgeTarget" maxlength="80" placeholder="e.g. 67istheworst or 2"></label><label>Badge text (blank clears)<input id="hbBadgeText" maxlength="16" placeholder="TUFF"></label><label>Badge color<select id="hbBadgeColor"><option value="cyan">Cyan</option><option value="orange">Orange</option><option value="purple">Purple</option><option value="green">Green</option><option value="pink">Pink</option><option value="white">White</option></select></label><button type="button" id="hbBadgeAssign">Save player badge</button><hr><h3>Chat reports</h3><button type="button" id="hbReportsRefresh">Load reports</button><div id="hbReportsList" class="hb-social-muted">No reports loaded.</div></div>
   </aside></div>`;
   document.querySelector("main")?.append(section);
   const overlay=document.createElement("div");overlay.id="hbAnnouncement";overlay.className="hb-social-announcement";overlay.innerHTML='<p id="hbAnnouncementBy"></p><h2 id="hbAnnouncementTitle"></h2><p id="hbAnnouncementBody"></p><button id="hbAnnouncementClose" type="button">Dismiss</button>';document.body.append(overlay);
