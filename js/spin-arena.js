@@ -4,9 +4,9 @@ export function initSpinArena(){
  // Remove any stale injected version before building the standalone Original.
  $("#physicsSandbox")?.remove();
  const card=document.createElement("article"); card.id="pbLaunchCard"; card.className="original-game-card";
- card.innerHTML='<div class="original-game-header"><div><p class="eyebrow">HYPERBLOCK ORIGINAL • BUILT IN-HOUSE</p><h3>Physics Battle Lab</h3><p>Build your own automatic weapon fighters, tune the physics, and run battles at your speed.</p><button id="pbOpen" class="primary" type="button">⚔ Open Physics Battle Lab</button></div><div class="original-game-icon">⚔️</div></div>';
+ card.innerHTML='<div class="original-game-header"><div><p class="eyebrow">HYPERBLOCK ORIGINAL • BUILT IN-HOUSE</p><h3>Spinning Arena</h3><p>Physics Battle Lab powers Spinning Arena: build weapon fighters, tune the physics, and run battles at your speed.</p><button id="pbOpen" class="primary" type="button">⚔ Open Spinning Arena</button></div><div class="original-game-icon">⚔️</div></div>';
  page.append(card);
- const app=document.createElement("section"); app.id="pbStandalone"; app.setAttribute("aria-label","Physics Battle Lab game");
+ const app=document.createElement("section"); app.id="pbStandalone"; app.setAttribute("aria-label","Spinning Arena game");
  app.innerHTML=`<style>
 #pbStandalone{position:fixed;inset:0;z-index:9999;background:#06111c;color:#e8f7ff;overflow:auto;font:14px system-ui;display:none}
 #pbStandalone.open{display:block}#pbStandalone *{box-sizing:border-box}#pbStandalone button,#pbStandalone input,#pbStandalone select,#pbStandalone textarea{font:inherit}
