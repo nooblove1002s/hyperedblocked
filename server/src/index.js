@@ -206,7 +206,6 @@ io.on("connection",socket=>{
     socketProfiles.set(socket.id,profile);
     callback({ok:true,id:person.id,name:person.name,isAdmin:person.id===1});
     if(!previous.id){
-      socket.emit("chat:global:history",{messages:globalChatHistory.slice(-100)});
       if(person.id===1){
         const notice={id:randomUUID(),name:person.name,alias:person.name,isAdmin:true,text:"⚡ AN ADMIN HAS JOINED HYPERBLOCK ⚡",size:4,system:true,at:new Date().toISOString()};
         globalChatHistory.push(notice);if(globalChatHistory.length>100)globalChatHistory.shift();rememberChatMessage(notice);
