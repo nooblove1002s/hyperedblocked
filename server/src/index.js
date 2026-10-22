@@ -34,6 +34,23 @@ rooms.set("hyperblock-global",{
 });
 const socketRoom=new Map();
 const socketProfiles=new Map();
+const bannedClientIds=new Map();
+let corruptionEnabled=false;
+function adminAuth(req,res,next){
+  const configured=process.env.ADMIN_API_KEY||"";
+  const supplied=req.get("x-admin-key")||"";
+  if(!configured||!safeEqual(supplied,configured))return res.status(401).json({error:"Admin authentication failed."});
+  next();
+}
+function publicPeople(){
+  const people=[];
+  for(const [socketId,roomId] of socketRoom){
+    const profile=socketProfiles.get(socketId)||{name:"Player"};
+    const room=rooms.get(roomId);
+    people.push({socketId,clientId:profile.clientId||"",name:profile.name||"Player",roomId,roomName:room?.name||"Unknown room",joinedAt:room?.players.get(socketId)?.joinedAt||null});
+  }
+  return people;
+}
 const MAX_ROOM_LIMIT=100;
 const HEARTBEAT_TTL_MS=45000;
 const cleanText=(v,max,fallback="")=>typeof v==="string"?v.trim().slice(0,max):fallback;
@@ -54,6 +71,8 @@ function removeSocketFromRoom(socketId){
   if(room){room.players.delete(socketId);if(room.players.size===0&&room.kind!=="official")rooms.delete(roomId);}
 }
 function join(socket,payload,callback=()=>{}){
+  const profile=socketProfiles.get(socket.id)||{};
+  if(profile.clientId&&bannedClientIds.has(profile.clientId))return callback({ok:false,error:"This player is banned from Hyperblock multiplayer."});
   const roomId=cleanText(payload?.roomId,80);
   const room=rooms.get(roomId);
   if(!room)return callback({ok:false,error:"Room not found or no longer active."});
@@ -84,18 +103,48 @@ app.post("/api/admin/servers",(req,res)=>{
   const room={id,name:cleanText(req.body?.name,64,"Official Server")||"Official Server",description:cleanText(req.body?.description,180),kind:"official",visibility:"public",region:cleanText(req.body?.region,32,"Auto")||"Auto",ownerName:"HYPERBLOCK OFFICIAL",maxPlayers,players:new Map(),createdAt:new Date().toISOString(),passwordHash:null};
   rooms.set(id,room);broadcast();res.status(201).json({ok:true,server:publicRoom(room)});
 });
+app.get("/api/admin/people",adminAuth,(req,res)=>res.set("Cache-Control","no-store").json({people:publicPeople(),corruptionEnabled}));
+app.post("/api/admin/ban",adminAuth,(req,res)=>{
+  const clientId=cleanText(req.body?.clientId,100);
+  const action=req.body?.action==="unban"?"unban":"ban";
+  if(!clientId)return res.status(400).json({error:"clientId is required."});
+  if(action==="unban"){bannedClientIds.delete(clientId);return res.json({ok:true,action,clientId});}
+  const reason=cleanText(req.body?.reason,180,"Banned by an administrator");
+  bannedClientIds.set(clientId,{reason,at:new Date().toISOString()});
+  for(const [socketId,profile] of socketProfiles){
+    if(profile.clientId===clientId){
+      removeSocketFromRoom(socketId);
+      const client=io.sockets.sockets.get(socketId);
+      client?.emit("moderation:banned",{reason});
+      client?.disconnect(true);
+    }
+  }
+  broadcast();
+  res.json({ok:true,action,clientId,reason});
+});
+app.get("/api/admin/corruption",adminAuth,(req,res)=>res.json({enabled:corruptionEnabled}));
+app.post("/api/admin/corruption",adminAuth,(req,res)=>{
+  corruptionEnabled=!!req.body?.enabled;
+  io.emit("corruption:update",{enabled:corruptionEnabled});
+  res.json({ok:true,enabled:corruptionEnabled});
+});
 app.get("/api/servers",(req,res)=>res.set("Cache-Control","no-store").json({servers:publicRooms()}));
 app.get("/api/stats",(req,res)=>res.set("Cache-Control","no-store").json(counts()));
 app.get("/",(req,res)=>res.type("text").send("Hyperblock multiplayer room API is running. See /health and /api/servers."));
 io.on("connection",socket=>{
   socketProfiles.set(socket.id,{name:"Player-"+socket.id.slice(0,5)});
+  socket.emit("corruption:update",{enabled:corruptionEnabled});
   socket.emit("server:list",{servers:publicRooms()});
   socket.emit("stats:update",counts());
   socket.on("server:refresh",()=>{socket.emit("server:list",{servers:publicRooms()});socket.emit("stats:update",counts());});
   socket.on("profile:set",(payload,callback=()=>{})=>{
-    const name=cleanText(payload?.name,24);
-    if(!name)return callback({ok:false,error:"Choose a display name."});
-    socketProfiles.set(socket.id,{name});callback({ok:true});
+    const name=cleanText(payload?.name,24)||"Player-"+socket.id.slice(0,5);
+    const clientId=cleanText(payload?.clientId,100);
+    if(clientId&&bannedClientIds.has(clientId)){
+      callback({ok:false,error:"This player is banned from Hyperblock multiplayer."});
+      socket.disconnect(true);return;
+    }
+    socketProfiles.set(socket.id,{name,clientId});callback({ok:true});
   });
   socket.on("room:create",(payload,callback=()=>{})=>{
     if(!rateLimit(socket,"create",5))return callback({ok:false,error:"Too many room creations. Wait a moment."});
