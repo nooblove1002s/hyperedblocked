@@ -38,7 +38,7 @@ async function loadRegisteredPeople(){
 }
 function persistRegisteredPeople(){
   const snapshot=JSON.stringify({version:1,people:registeredPeople},null,2);
-  peopleWrite=peopleWrite.then(async()=>{await mkdir(DATA_DIR,{recursive:true});await writeFile(PEOPLE_FILE,snapshot,{encoding:"utf8",mode:0o600});});
+  peopleWrite=peopleWrite.catch(()=>{}).then(async()=>{await mkdir(DATA_DIR,{recursive:true});await writeFile(PEOPLE_FILE,snapshot,{encoding:"utf8",mode:0o600});});
   return peopleWrite;
 }
 function publicRegisteredPeople(){
