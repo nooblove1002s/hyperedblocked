@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
 
 const PORT = Number(process.env.PORT || 3000);
@@ -16,7 +17,8 @@ app.use(cors({origin(origin,callback){if(!origin||allowedOrigins.includes(origin
 app.use(express.json({limit:"12kb"}));
 const httpServer=createServer(app);
 const io=new Server(httpServer,{cors:{origin:allowedOrigins,methods:["GET","POST"]},maxHttpBufferSize:1e5,connectTimeout:10000});
-const DATA_DIR=path.resolve(process.env.HYPERBLOCK_DATA_DIR||"./data");
+const SERVER_DIR=path.dirname(fileURLToPath(import.meta.url));
+const DATA_DIR=path.resolve(process.env.HYPERBLOCK_DATA_DIR||path.join(SERVER_DIR,"../data"));
 const PEOPLE_FILE=path.join(DATA_DIR,"people.json");
 let registeredPeople=[];
 let nextPersonId=1;
@@ -75,7 +77,7 @@ function publicPeople(){
   for(const [socketId,roomId] of socketRoom){
     const profile=socketProfiles.get(socketId)||{name:"Player"};
     const room=rooms.get(roomId);
-    people.push({socketId,clientId:profile.clientId||"",name:profile.name||"Player",roomId,roomName:room?.name||"Unknown room",joinedAt:room?.players.get(socketId)?.joinedAt||null});
+    people.push({socketId,clientId:profile.clientId||"",id:profile.id||null,name:profile.name||"Player",roomId,roomName:room?.name||"Unknown room",joinedAt:room?.players.get(socketId)?.joinedAt||null});
   }
   return people;
 }
@@ -131,7 +133,23 @@ app.post("/api/admin/servers",(req,res)=>{
   const room={id,name:cleanText(req.body?.name,64,"Official Server")||"Official Server",description:cleanText(req.body?.description,180),kind:"official",visibility:"public",region:cleanText(req.body?.region,32,"Auto")||"Auto",ownerName:"HYPERBLOCK OFFICIAL",maxPlayers,players:new Map(),createdAt:new Date().toISOString(),passwordHash:null};
   rooms.set(id,room);broadcast();res.status(201).json({ok:true,server:publicRoom(room)});
 });
-app.get("/api/admin/people",adminAuth,(req,res)=>res.set("Cache-Control","no-store").json({people:publicPeople(),corruptionEnabled}));
+app.post("/api/identity/register",async(req,res)=>{
+  const name=cleanText(req.body?.name,24);
+  const clientId=cleanText(req.body?.clientId,100);
+  if(!/^[A-Za-z0-9_-]{8,100}$/.test(clientId))return res.status(400).json({error:"A valid browser identity is required."});
+  if(name.length<2)return res.status(400).json({error:"Choose a name with at least 2 characters."});
+  if(bannedClientIds.has(clientId))return res.status(403).json({error:"This browser identity is banned from Hyperblock."});
+  let person=registeredPeople.find(p=>p.clientId===clientId);
+  if(person){
+    if(person.name!==name){person.name=name;person.updatedAt=new Date().toISOString();try{await persistRegisteredPeople()}catch{return res.status(500).json({error:"Could not save the private player registry. Check backend storage permissions."});}}
+  }else{
+    person={id:nextPersonId++,name,clientId,createdAt:new Date().toISOString()};
+    registeredPeople.push(person);
+    try{await persistRegisteredPeople()}catch(error){registeredPeople=registeredPeople.filter(p=>p.clientId!==clientId);nextPersonId=Math.max(0,...registeredPeople.map(p=>p.id))+1;return res.status(500).json({error:"Could not save the private player registry. Check backend storage permissions."});}
+  }
+  res.set("Cache-Control","no-store").json({ok:true,id:person.id,name:person.name,clientId:person.clientId});
+});
+app.get("/api/admin/people",adminAuth,(req,res)=>res.set("Cache-Control","no-store").json({people:publicPeople(),registeredPeople:publicRegisteredPeople(),corruptionEnabled}));
 app.post("/api/admin/ban",adminAuth,(req,res)=>{
   const clientId=cleanText(req.body?.clientId,100);
   const action=req.body?.action==="unban"?"unban":"ban";
