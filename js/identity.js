@@ -42,7 +42,7 @@ function showGate(saved={},message=""){
     const offlineButton=gate.querySelector("#hbIdentityOffline");
     name.value=saved.name||"";
     gate.querySelector("#hbIdentityError").textContent=message;
-    offlineButton.hidden=false;
+    offlineButton.hidden=!message;
     offlineButton.addEventListener("click",()=>{
       const chosenName=name.value.trim();
       const err=gate.querySelector("#hbIdentityError");
