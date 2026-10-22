@@ -39,33 +39,54 @@ document.addEventListener("DOMContentLoaded", function(){
   var sound=document.getElementById("introSoundBtn");
   var skip=document.getElementById("introSkipBtn");
   var fallback=document.querySelector(".loader-fallback");
+  var introFrame=null;
+  function enableSound(){
+    if(v && !introFrame){
+      v.muted=false; v.volume=1;
+      var p=v.play();
+      if(p && p.catch) p.catch(function(){v.muted=true;});
+    }else if(introFrame && introFrame.contentWindow){
+      introFrame.contentWindow.postMessage(JSON.stringify({event:"command",func:"unMute",args:[]}),"https://www.youtube.com");
+      introFrame.contentWindow.postMessage(JSON.stringify({event:"command",func:"setVolume",args:[100]}),"https://www.youtube.com");
+      introFrame.contentWindow.postMessage(JSON.stringify({event:"command",func:"playVideo",args:[]}),"https://www.youtube.com");
+    }
+    sound.textContent="🔊 Sound requested";
+    sound.disabled=true;
+  }
+  function useVideoFallback(){
+    if(introFrame) return;
+    introFrame=document.createElement("iframe");
+    introFrame.className="intro-video intro-frame";
+    introFrame.title="Hyperblock intro video";
+    introFrame.allow="autoplay; encrypted-media; picture-in-picture";
+    introFrame.setAttribute("allowfullscreen","");
+    introFrame.src="https://www.youtube.com/embed/O3PTpp25Sfk?autoplay=1&playsinline=1&controls=0&mute=1&rel=0&modestbranding=1&enablejsapi=1";
+    if(v) v.replaceWith(introFrame);
+    if(fallback) fallback.classList.remove("show");
+    if(sound){sound.hidden=false;sound.textContent="🔊 Tap for sound";}
+  }
   if(v){
     v.addEventListener("ended", window.__finishIntro, {once:true});
-    v.addEventListener("error", function(){
-      if(fallback) fallback.classList.add("show");
-      if(sound) sound.hidden=true;
-      window.__finishIntro();
-    }, {once:true});
+    v.addEventListener("error", useVideoFallback, {once:true});
+    // Try unmuted autoplay first. If the browser blocks it, retry muted and
+    // keep the sound button available for the first user interaction.
+    v.muted=false; v.volume=1;
     var play=v.play();
     if(play && play.catch) play.catch(function(){
-      if(fallback) fallback.classList.add("show");
+      v.muted=true;
+      var mutedPlay=v.play();
+      if(mutedPlay && mutedPlay.catch) mutedPlay.catch(function(){});
+      if(sound) sound.textContent="🔊 Tap for sound";
     });
   }
-  if(sound && v) sound.addEventListener("click", function(){
-    v.muted=false;
-    v.volume=1;
-    var play=v.play();
-    if(play && play.catch) play.catch(function(){});
-    sound.textContent="🔊 Sound on";
-    sound.disabled=true;
-  });
+  if(sound) sound.addEventListener("click", enableSound);
   if(skip) skip.addEventListener("click", window.__finishIntro);
 });
 </script>
 </head>
 <body>
 <div id="loader" class="loader" aria-live="polite">
-  <video id="introVideo" class="intro-video" autoplay muted playsinline preload="auto" aria-label="Hyperblock intro">
+  <video id="introVideo" class="intro-video" autoplay playsinline preload="auto" aria-label="Hyperblock intro">
     <source src="assets/hyperblock-intro.mp4" type="video/mp4">
   </video>
   <div class="intro-controls">
