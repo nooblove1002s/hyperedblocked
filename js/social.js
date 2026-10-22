@@ -153,6 +153,7 @@ async function startConnection(){
   socket.on("chat:dm:message",receiveDm);
   socket.on("chat:system",receiveGlobal);
   socket.on("chat:announcement",showAnnouncement);
+  socket.on("chat:reports:list",payload=>{const box=$("#hbReportsList",root);if(!box)return;box.replaceChildren();const reports=Array.isArray(payload?.reports)?payload.reports:[];if(!reports.length){box.textContent="No reports yet.";return;}reports.forEach(report=>{const item=document.createElement("div");item.className="hb-chat-msg";item.textContent="#"+String(report.id).slice(0,8)+" · "+report.reporterName+" reported "+(report.targetName||"unknown")+" · "+report.channel+"\nMessage: "+report.messageText+"\nReason: "+report.reason;box.append(item);});});
   if(socket.connected)authenticate();
 }
 export function initSocial(){
@@ -178,6 +179,7 @@ export function initSocial(){
   $("#hbChatForm",root).addEventListener("submit",e=>{e.preventDefault();sendMessage();});
   $("#hbChatSize",root).addEventListener("change",e=>{const input=$("#hbChatInput",root);if(!input.value.trim())input.value="##"+e.target.value+" ";else input.value="##"+e.target.value+" "+input.value.replace(/^##[1-5]\s*/,"");input.focus();});
   $("#hbAnnounceSounds",root).addEventListener("change",e=>{soundEnabled=e.target.checked;if(soundEnabled){try{audioContext=audioContext||new (window.AudioContext||window.webkitAudioContext)();audioContext.resume();}catch{}}});
+  $("#hbReportsRefresh",root).addEventListener("click",()=>{if(!socket?.connected)return setStatus("Connect to the server before loading reports.");socket.emit("chat:reports:get",res=>setStatus(res?.ok?"Loaded moderation reports.":res?.error||"Could not load reports."));});
   $("#hbBadgeAssign",root).addEventListener("click",()=>{const target=$("#hbBadgeTarget",root).value.trim();if(!target)return setStatus("Enter a player ID or exact username.");if(!socket?.connected)return setStatus("Connect to the server before changing badges.");socket.emit("chat:badge:assign",{target,badge:$("#hbBadgeText",root).value,color:$("#hbBadgeColor",root).value},res=>setStatus(res?.ok?(res.badge?"Badge "+res.badge+" saved for "+res.name+".":"Badge cleared for "+res.name+"."):res?.error||"Badge update failed."));});
   $("#hbAnnSend",root).addEventListener("click",()=>{const text=$("#hbAnnText",root).value.trim();if(!text)return setStatus("Enter an announcement message first.");if(!socket?.connected)return setStatus("Connect to the server before announcing.");socket.emit("chat:announcement:send",{title:$("#hbAnnTitle",root).value,text,style:$("#hbAnnStyle",root).value,sound:$("#hbAnnSound",root).value},res=>setStatus(res?.ok?"Announcement sent.":res?.error||"Announcement failed."));});
   $("#hbAnnouncementClose").addEventListener("click",()=>$("#hbAnnouncement").classList.remove("open"));
