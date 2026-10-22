@@ -15,6 +15,23 @@ app.use(express.json({limit:"12kb"}));
 const httpServer=createServer(app);
 const io=new Server(httpServer,{cors:{origin:allowedOrigins,methods:["GET","POST"]},maxHttpBufferSize:1e5,connectTimeout:10000});
 const rooms=new Map();
+// Permanent public entry point. Store the oversized capacity as a string so JSON
+// preserves every digit exactly; capacity comparisons coerce it to Number safely
+// for realistic player counts.
+const GLOBAL_SERVER_CAPACITY="8794237893427893247";
+rooms.set("hyperblock-global",{
+  id:"hyperblock-global",
+  name:"Hyperblock Global Server",
+  description:"The public global room. Anyone can join.",
+  kind:"official",
+  visibility:"public",
+  region:"Global",
+  ownerName:"HYPERBLOCK",
+  maxPlayers:GLOBAL_SERVER_CAPACITY,
+  players:new Map(),
+  createdAt:new Date().toISOString(),
+  passwordHash:null
+});
 const socketRoom=new Map();
 const socketProfiles=new Map();
 const MAX_ROOM_LIMIT=100;
