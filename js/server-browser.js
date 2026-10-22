@@ -50,12 +50,18 @@ function render(root){
   const grid=$(root,"#sbServerList"); grid.replaceChildren();
   if(!list.length){const empty=document.createElement("div");empty.className="sb-empty";empty.textContent=connected?"No servers match. Create one or change your filters.":"Connect to a backend to load real servers. The sample cards are not live servers.";grid.append(empty);}
   list.forEach(s=>{
-    const count=Number(s.playerCount)||0, max=Math.max(1,Number(s.maxPlayers)||20), full=count>=max;
+    const count=Number(s.playerCount)||0;
+    const maxText=String(s.maxPlayers ?? 20);
+    const max=Math.max(1,Number(s.maxPlayers)||20);
+    const full=count>=max;
+    let openText=String(Math.max(0,max-count));
+    // Preserve every digit for the Global Server's intentionally enormous capacity.
+    try{if(/^\d+$/.test(maxText))openText=(BigInt(maxText)-BigInt(count)).toString();}catch{}
     const card=document.createElement("article");card.className="sb-card";
     const tag=s.visibility==="private"?"Private room":s.kind==="official"?"Official server":"Community server";
     card.innerHTML='<div class="sb-card-head"><div><h3>'+esc(s.name)+'</h3><div class="sb-meta">'+esc(s.region||"Region not set")+' · '+esc(s.ownerName||"Hyperblock")+'</div></div><span class="sb-tag '+(s.visibility==="private"?"private":full?"full":"")+'">'+tag+'</span></div>'+
       '<div class="sb-meter"><i style="width:'+Math.min(100,count/max*100)+'%"></i></div>'+
-      '<div class="sb-meta"><b>'+count+' / '+max+' players</b> · '+(full?"Full":(max-count)+" spots open")+'<br>'+esc(s.description||"Jump in and play.")+'</div>'+
+      '<div class="sb-meta"><b>'+count+' / '+esc(maxText)+' players</b> · '+(full?"Full":openText+" spots open")+'<br>'+esc(s.description||"Jump in and play.")+'</div>'+
       '<div class="sb-card-actions"><button class="primary" '+(full?'disabled':'')+' data-join="'+esc(s.id)+'">'+(full?"Server Full":"Join")+'</button><button class="secondary" data-copy="'+esc(s.id)+'">Copy ID</button></div>';
     grid.append(card);
   });
