@@ -66,7 +66,7 @@ function showGate(saved={},message=""){
         const response=await fetchWithTimeout(base+"/api/identity/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:chosenName,clientId})},4500);
         const data=await response.json().catch(()=>({}));
         if(!response.ok)throw new Error(data.error||"Registration failed ("+response.status+").");
-        const identity={id:data.id,name:data.name,clientId:data.clientId,backend:base};
+        const identity={id:data.id,name:data.name,clientId:data.clientId,isAdmin:data.isAdmin===true||Number(data.id)===1,backend:base};
         if(!safeSet(IDENTITY_KEY,JSON.stringify(identity)))throw new Error("This browser could not save your profile. Check browser storage settings.");
         window.HyperblockIdentity=identity;paintBadge(identity);gate.remove();resolve(identity);
       }catch(error){err.textContent=error.message+" You can retry, or continue offline and use the portal while multiplayer is unavailable.";offlineButton.hidden=false;submit.disabled=false;submit.textContent="Try Again"}
