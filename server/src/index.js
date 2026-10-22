@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
 
 const PORT = Number(process.env.PORT || 3000);
-const allowedOrigins = (process.env.CORS_ORIGINS || "http://localhost:5173,http://localhost:8080").split(",").map(x=>x.trim()).filter(Boolean);
+const allowedOrigins = (process.env.CORS_ORIGINS || "https://nooblove1002s.github.io,http://localhost:5173,http://localhost:8080").split(",").map(x=>x.trim()).filter(Boolean);
 const app = express();
 app.disable("x-powered-by");
 if(process.env.TRUST_PROXY === "true") app.set("trust proxy", 1);
