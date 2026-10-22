@@ -199,7 +199,7 @@ io.on("connection",socket=>{
     const person=registeredPeople.find(p=>p.clientId===clientId);
     if(!person){callback({ok:false,error:"Register your Hyperblock name before connecting."});socket.disconnect(true);return;}
     const previous=socketProfiles.get(socket.id)||{};
-    const profile={...previous,name:person.name,clientId,id:person.id,alias:previous.id===person.id&&previous.alias?previous.alias:person.name};
+    const profile={...previous,name:person.name,clientId,id:person.id,alias:previous.id===person.id&&previous.alias?previous.alias:person.name,badge:person.badge||"",badgeColor:person.badgeColor||"cyan"};
     socketProfiles.set(socket.id,profile);
     callback({ok:true,id:person.id,name:person.name,isAdmin:person.id===1});
     if(!previous.id){
@@ -234,7 +234,7 @@ io.on("connection",socket=>{
     const sizeCommand=text.match(/^##([1-5])(?:\s+|$)([\s\S]*)$/);
     if(sizeCommand){size=Number(sizeCommand[1]);text=sizeCommand[2].trim();}
     if(!text)return callback({ok:false,error:"Add some text after the size command."});
-    const message={id:randomUUID(),name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,text,size,at:new Date().toISOString()};
+    const message={id:randomUUID(),playerId:profile.id,name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,badge:profile.badge||"",badgeColor:profile.badgeColor||"cyan",text,size,at:new Date().toISOString()};
     globalChatHistory.push(message);if(globalChatHistory.length>100)globalChatHistory.shift();
     io.emit("chat:global:message",message);
     callback({ok:true});
@@ -255,7 +255,7 @@ io.on("connection",socket=>{
     const sizeCommand=text.match(/^##([1-5])(?:\s+|$)([\s\S]*)$/);
     if(sizeCommand){size=Number(sizeCommand[1]);text=sizeCommand[2].trim();}
     if(!text)return callback({ok:false,error:"Add some text after the size command."});
-    const message={id:randomUUID(),name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,text,size,at:new Date().toISOString()};
+    const message={id:randomUUID(),playerId:profile.id,name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,badge:profile.badge||"",badgeColor:profile.badgeColor||"cyan",text,size,at:new Date().toISOString()};
     io.to(roomId).emit("chat:room:message",message);
     callback({ok:true});
   });
@@ -280,10 +280,29 @@ io.on("connection",socket=>{
     const sizeCommand=messageText.match(/^##([1-5])(?:\s+|$)([\s\S]*)$/);
     if(sizeCommand){size=Number(sizeCommand[1]);messageText=sizeCommand[2].trim();}
     if(!messageText)return callback({ok:false,error:"Add some text after the size command."});
-    const message={id:randomUUID(),name:sender.name,alias:sender.alias||sender.name,isAdmin:sender.id===1,text:messageText,size,at:new Date().toISOString(),toName:recipient.name};
+    const message={id:randomUUID(),playerId:sender.id,name:sender.name,alias:sender.alias||sender.name,isAdmin:sender.id===1,badge:sender.badge||"",badgeColor:sender.badgeColor||"cyan",text:messageText,size,at:new Date().toISOString(),toName:recipient.name};
     socket.emit("chat:dm:message",{...message,direction:"sent"});
     for(const [sid] of online)io.to(sid).emit("chat:dm:message",{...message,direction:"received",toName:sender.name});
     callback({ok:true});
+  });
+  socket.on("chat:badge:assign",async(payload,callback=()=>{})=>{
+    const actor=socketProfiles.get(socket.id);
+    if(actor?.id!==1)return callback({ok:false,error:"Only the server-authorized admin can assign chat badges."});
+    if(!rateLimit(socket,"chat-badge",8,10000))return callback({ok:false,error:"Wait a moment before changing more badges."});
+    const target=cleanText(payload?.target,80).toLowerCase();
+    const badge=cleanText(payload?.badge,16).replace(/[^A-Za-z0-9 _-]/g,"").trim();
+    const color=["cyan","orange","purple","green","pink","white"].includes(payload?.color)?payload.color:"cyan";
+    if(!target)return callback({ok:false,error:"Enter a player ID or exact username."});
+    const person=registeredPeople.find(p=>String(p.id)===target||p.name.toLowerCase()===target);
+    if(!person)return callback({ok:false,error:"No registered player matches that ID or exact username."});
+    const oldBadge=person.badge,oldColor=person.badgeColor;
+    person.badge=badge;person.badgeColor=badge?color:"cyan";
+    try{await persistRegisteredPeople();}
+    catch{person.badge=oldBadge;person.badgeColor=oldColor;return callback({ok:false,error:"Could not save the badge. Check backend storage."});}
+    for(const [sid,profile] of socketProfiles){
+      if(profile.id===person.id){profile.badge=person.badge;profile.badgeColor=person.badgeColor;socketProfiles.set(sid,profile);}
+    }
+    callback({ok:true,name:person.name,badge:person.badge,color:person.badgeColor});
   });
   socket.on("chat:announcement:send",(payload,callback=()=>{})=>{
     const profile=socketProfiles.get(socket.id);
