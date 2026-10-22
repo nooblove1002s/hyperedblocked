@@ -12,7 +12,7 @@ const css = `
 .hb-social-panel{min-width:0;border:1px solid var(--border);border-radius:16px;background:#ffffff05;padding:14px}
 .hb-social-messages{height:min(54vh,560px);min-height:280px;overflow:auto;display:flex;flex-direction:column;gap:9px;padding:4px}
 .hb-chat-msg{padding:10px 12px;border:1px solid #ffffff12;border-radius:12px;background:#071827;overflow-wrap:anywhere}
-.hb-chat-meta{font-size:12px;color:var(--muted);margin-bottom:5px}
+.hb-chat-meta{font-size:12px;color:var(--muted);margin-bottom:5px}.hb-chat-actions{display:flex;gap:7px;margin-top:8px}.hb-chat-actions button{font-size:11px;padding:5px 8px;border-radius:7px;background:#ffffff0a;border:1px solid #ffffff1a;color:var(--muted)}
 .hb-chat-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45}
 .hb-chat-size-1{font-size:11px}.hb-chat-size-2{font-size:13px}.hb-chat-size-3{font-size:16px}.hb-chat-size-4{font-size:21px;font-weight:750}.hb-chat-size-5{font-size:clamp(25px,4vw,38px);font-weight:950;line-height:1.12}
 .hb-chat-admin{color:#ffb55e;font-weight:900}.hb-chat-badge{display:inline-block;padding:2px 6px;border-radius:6px;background:#20d7ee22;color:#20d7ee;font-size:10px;font-weight:900;margin-right:5px}
@@ -49,6 +49,7 @@ function loadSocketClient(){
 }
 function getBlockedPlayers(){try{const v=JSON.parse(localStorage.getItem('hyperblock-chat-blocked')||'[]');return Array.isArray(v)?v.map(Number).filter(Number.isFinite):[]}catch{return[]}}
 function saveBlockedPlayers(ids){try{localStorage.setItem('hyperblock-chat-blocked',JSON.stringify([...new Set(ids)]));return true}catch{return false}}
+function renderBlockedList(){const box=$("#hbBlockedList",root);if(!box)return;box.replaceChildren();const ids=getBlockedPlayers();if(!ids.length){box.textContent="No blocked players.";return;}ids.forEach(id=>{const row=document.createElement("div");row.className="hb-chat-meta";row.textContent="Player ID "+id+" ";const b=document.createElement("button");b.type="button";b.textContent="Unblock";b.addEventListener("click",()=>{saveBlockedPlayers(getBlockedPlayers().filter(x=>x!==id));renderMessages();renderBlockedList();});row.append(b);box.append(row);});}
 function setStatus(text){const el=$("#hbSocialStatus",root);if(el)el.textContent=text;}
 function setMode(mode){
   currentMode=mode;
@@ -85,7 +86,7 @@ function renderMessages(){
     }
     box.append(card);
   }
-  box.scrollTop=box.scrollHeight;
+  box.scrollTop=box.scrollHeight;renderBlockedList();
 }
 function receiveGlobal(m){history.global.push(m);if(history.global.length>100)history.global.shift();if(currentMode==="global")renderMessages();}
 function receiveDm(m){history.dm.push(m);if(history.dm.length>100)history.dm.shift();if(currentMode==="dm")renderMessages();}
@@ -169,7 +170,7 @@ export function initSocial(){
   <div id="hbDmTargetWrap" class="hb-chat-tools" hidden><label for="hbDmTarget">Player ID or exact username</label><input id="hbDmTarget" placeholder="e.g. 2 or player2" maxlength="80"></div>
   <form class="hb-chat-compose" id="hbChatForm"><input id="hbChatInput" maxlength="500" autocomplete="off" placeholder="Write a message… (##5 makes it huge)" required><button type="submit">Send</button></form>
   <div class="hb-chat-tools"><label>Text size<select id="hbChatSize"><option value="3">Normal</option><option value="1">##1 Small</option><option value="2">##2 Medium-small</option><option value="4">##4 Large</option><option value="5">##5 Extra large</option></select></label><span class="hb-social-muted">Commands: ##1–##5 · alias: *#player2</span></div></div>
-  <aside class="hb-social-panel hb-social-side"><h3>Chat settings</h3><label><input id="hbAnnounceSounds" type="checkbox"> Enable admin announcement sounds</label><p class="hb-social-muted">Sounds only apply to admin announcements. Your browser may require a tap before audio can play.</p>
+  <aside class="hb-social-panel hb-social-side"><h3>Chat settings</h3><h4>Blocked players</h4><div id="hbBlockedList" class="hb-social-muted">No blocked players.</div><label><input id="hbAnnounceSounds" type="checkbox"> Enable admin announcement sounds</label><p class="hb-social-muted">Sounds only apply to admin announcements. Your browser may require a tap before audio can play.</p>
   <div id="hbAnnouncePanel" hidden><hr><h3>Admin announcement</h3><label>Title<input id="hbAnnTitle" maxlength="80" value="HYPERBLOCK ANNOUNCEMENT"></label><label>Message<input id="hbAnnText" maxlength="280" placeholder="Announcement text"></label><label>Style<select id="hbAnnStyle"><option value="futuristic">Futuristic</option><option value="neon">Neon</option><option value="glitch">Glitch</option><option value="horror">Horror</option><option value="custom">Custom / clean</option></select></label><label>Sound<select id="hbAnnSound"><option value="futuristic">Futuristic tone</option><option value="glitch">Glitch tone</option><option value="horror">Horror tone</option><option value="silent">Silent</option></select></label><button type="button" id="hbAnnSend">Send global announcement</button><hr><h3>Assign player badge</h3><label>Player ID or exact username<input id="hbBadgeTarget" maxlength="80" placeholder="e.g. 67istheworst or 2"></label><label>Badge text (blank clears)<input id="hbBadgeText" maxlength="16" placeholder="TUFF"></label><label>Badge color<select id="hbBadgeColor"><option value="cyan">Cyan</option><option value="orange">Orange</option><option value="purple">Purple</option><option value="green">Green</option><option value="pink">Pink</option><option value="white">White</option></select></label><button type="button" id="hbBadgeAssign">Save player badge</button><hr><h3>Chat reports</h3><button type="button" id="hbReportsRefresh">Load reports</button><div id="hbReportsList" class="hb-social-muted">No reports loaded.</div></div>
   </aside></div>`;
   document.querySelector("main")?.append(section);
