@@ -63,6 +63,7 @@ rooms.set("hyperblock-global",{
   passwordHash:null
 });
 const socketRoom=new Map();
+const globalChatHistory=[];
 const socketProfiles=new Map();
 const bannedClientIds=new Map();
 let corruptionEnabled=false;
@@ -190,7 +191,6 @@ io.on("connection",socket=>{
   socket.emit("stats:update",counts());
   socket.on("server:refresh",()=>{socket.emit("server:list",{servers:publicRooms()});socket.emit("stats:update",counts());});
   socket.on("profile:set",(payload,callback=()=>{})=>{
-    const name=cleanText(payload?.name,24)||"Player-"+socket.id.slice(0,5);
     const clientId=cleanText(payload?.clientId,100);
     if(clientId&&bannedClientIds.has(clientId)){
       callback({ok:false,error:"This player is banned from Hyperblock multiplayer."});
@@ -198,7 +198,75 @@ io.on("connection",socket=>{
     }
     const person=registeredPeople.find(p=>p.clientId===clientId);
     if(!person){callback({ok:false,error:"Register your Hyperblock name before connecting."});socket.disconnect(true);return;}
-    socketProfiles.set(socket.id,{name:person.name,clientId,id:person.id});callback({ok:true,id:person.id,name:person.name});
+    const previous=socketProfiles.get(socket.id)||{};
+    const profile={...previous,name:person.name,clientId,id:person.id,alias:previous.id===person.id&&previous.alias?previous.alias:person.name};
+    socketProfiles.set(socket.id,profile);
+    callback({ok:true,id:person.id,name:person.name,isAdmin:person.id===1});
+    if(!previous.id){
+      socket.emit("chat:global:history",{messages:globalChatHistory.slice(-100)});
+      if(person.id===1){
+        const notice={id:randomUUID(),name:person.name,alias:person.name,isAdmin:true,text:"⚡ AN ADMIN HAS JOINED HYPERBLOCK ⚡",size:4,system:true,at:new Date().toISOString()};
+        globalChatHistory.push(notice);if(globalChatHistory.length>100)globalChatHistory.shift();
+        io.emit("chat:system",notice);
+      }
+    }
+  });
+  socket.on("chat:global:send",(payload,callback=()=>{})=>{
+    const profile=socketProfiles.get(socket.id);
+    if(!profile?.id)return callback({ok:false,error:"Register your Hyperblock profile before chatting."});
+    if(profile.clientId&&bannedClientIds.has(profile.clientId))return callback({ok:false,error:"This player is banned from chat."});
+    if(!rateLimit(socket,"chat-global",6,10000))return callback({ok:false,error:"Slow down a little before sending more messages."});
+    let text=cleanText(payload?.text,500);
+    if(!text)return callback({ok:false,error:"Write a message first."});
+    const aliasCommand=text.match(/^\\*#([A-Za-z0-9_-]{1,24})$/);
+    if(aliasCommand){
+      profile.alias=aliasCommand[1];socketProfiles.set(socket.id,profile);
+      return callback({ok:true,alias:profile.alias,message:"Display alias changed to "+profile.alias+"."});
+    }
+    const aliasAndText=text.match(/^\\*#([A-Za-z0-9_-]{1,24})\\s+([\\s\\S]+)$/);
+    if(aliasAndText){profile.alias=aliasAndText[1];text=aliasAndText[2].trim();socketProfiles.set(socket.id,profile);if(!text)return callback({ok:true,alias:profile.alias});}
+    let size=3;
+    const sizeCommand=text.match(/^##([1-5])(?:\\s+|$)([\\s\\S]*)$/);
+    if(sizeCommand){size=Number(sizeCommand[1]);text=sizeCommand[2].trim();}
+    if(!text)return callback({ok:false,error:"Add some text after the size command."});
+    const message={id:randomUUID(),name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,text,size,at:new Date().toISOString()};
+    globalChatHistory.push(message);if(globalChatHistory.length>100)globalChatHistory.shift();
+    io.emit("chat:global:message",message);
+    callback({ok:true});
+  });
+  socket.on("chat:dm:send",(payload,callback=()=>{})=>{
+    const sender=socketProfiles.get(socket.id);
+    if(!sender?.id)return callback({ok:false,error:"Register your Hyperblock profile before sending private messages."});
+    if(sender.clientId&&bannedClientIds.has(sender.clientId))return callback({ok:false,error:"This player is banned from chat."});
+    if(!rateLimit(socket,"chat-dm",6,10000))return callback({ok:false,error:"Slow down before sending more private messages."});
+    const target=cleanText(payload?.target,80).toLowerCase();
+    const text=cleanText(payload?.text,500);
+    if(!target||!text)return callback({ok:false,error:"Choose a player and write a message."});
+    const recipient=registeredPeople.find(p=>String(p.id)===target||p.name.toLowerCase()===target);
+    if(!recipient)return callback({ok:false,error:"No player matches that ID or exact username."});
+    if(recipient.id===sender.id)return callback({ok:false,error:"Choose another player for a private message."});
+    const online=[...socketProfiles.entries()].filter(([sid,p])=>p.id===recipient.id&&io.sockets.sockets.has(sid));
+    if(!online.length)return callback({ok:false,error:"That player is offline right now."});
+    let messageText=text,size=3;
+    const sizeCommand=messageText.match(/^##([1-5])(?:\\s+|$)([\\s\\S]*)$/);
+    if(sizeCommand){size=Number(sizeCommand[1]);messageText=sizeCommand[2].trim();}
+    if(!messageText)return callback({ok:false,error:"Add some text after the size command."});
+    const message={id:randomUUID(),name:sender.name,alias:sender.alias||sender.name,isAdmin:sender.id===1,text:messageText,size,at:new Date().toISOString(),toName:recipient.name};
+    socket.emit("chat:dm:message",{...message,direction:"sent"});
+    for(const [sid] of online)io.to(sid).emit("chat:dm:message",{...message,direction:"received",toName:sender.name});
+    callback({ok:true});
+  });
+  socket.on("chat:announcement:send",(payload,callback=()=>{})=>{
+    const profile=socketProfiles.get(socket.id);
+    if(!profile?.id)return callback({ok:false,error:"Register your profile before sending announcements."});
+    if(profile.id!==1)return callback({ok:false,error:"Only a server-authorized admin can send global announcements."});
+    if(!rateLimit(socket,"chat-announcement",2,10000))return callback({ok:false,error:"Wait a moment before sending another announcement."});
+    const text=cleanText(payload?.text,280),title=cleanText(payload?.title,80,"HYPERBLOCK ANNOUNCEMENT")||"HYPERBLOCK ANNOUNCEMENT";
+    if(!text)return callback({ok:false,error:"Enter announcement text."});
+    const style=["futuristic","neon","glitch","horror","custom"].includes(payload?.style)?payload.style:"futuristic";
+    const sound=["futuristic","glitch","horror","silent"].includes(payload?.sound)?payload.sound:"futuristic";
+    io.emit("chat:announcement",{id:randomUUID(),name:profile.name,title,text,style,sound,at:new Date().toISOString()});
+    callback({ok:true});
   });
   socket.on("room:create",(payload,callback=()=>{})=>{
     if(!socketProfiles.get(socket.id)?.id)return callback({ok:false,error:"Register your Hyperblock player name before creating a room."});
