@@ -4,6 +4,7 @@ import { openPlayer, setupPlayer } from "./games/player.js";
 import { setupWebSearch } from "./tools/browser.js";
 import { initServerBrowser } from "./server-browser.js";
 import { initAdmin } from "./admin.js";
+import { requireIdentity } from "./identity.js";
 import { initSpinArena } from "./spin-arena.js";
 // Safe localStorage: never throws (blocked storage, private mode, corrupt data)
 const ls = {
@@ -366,6 +367,7 @@ function startLoader(){
 document.addEventListener("DOMContentLoaded", async ()=>{
   const finish = startLoader();
   let failure = null;
+  try{ await requireIdentity(); }catch(error){ console.error("Player identity setup failed:",error); }
 
   // One broken UI feature must not block the rest of the portal
   for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings, initSpinArena, initServerBrowser, initAdmin]){
