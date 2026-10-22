@@ -1,5 +1,5 @@
+import { BACKEND_URL } from "./config.js";
 const IDENTITY_KEY="hyperblock-identity";
-const BACKEND_KEY="hyperblock-server-backend";
 const safeGet=k=>{try{return localStorage.getItem(k)||""}catch{return ""}};
 const safeSet=(k,v)=>{try{localStorage.setItem(k,v);return true}catch{return false}};
 function clientIdentity(){
@@ -35,24 +35,23 @@ function showGate(saved={},message=""){
   return new Promise(resolve=>{
     document.getElementById("hbIdentityGate")?.remove();
     const gate=document.createElement("div");gate.id="hbIdentityGate";gate.className="hb-identity-gate";
-    gate.innerHTML='<form class="hb-identity-card" id="hbIdentityForm"><p style="letter-spacing:.18em;font-weight:900;color:#16c8e8;font-size:11px">HYPERBLOCK PLAYER PROFILE</p><h1>Choose your player name</h1><p>Your name and player ID are used across Hyperblock multiplayer. Your ID is assigned in order, like (1), (2), (3), and remembered on this browser.</p><label>Player name<input id="hbIdentityName" maxlength="24" minlength="2" required autocomplete="nickname" placeholder="Enter a name"></label><label>Multiplayer backend URL<input id="hbIdentityBackend" type="url" required placeholder="https://your-hyperblock-server.example.com"></label><p class="hb-identity-small">The backend saves the private ID/name registry. A deployed backend with persistent storage is required; GitHub Pages alone cannot store a shared private registry.</p><p id="hbIdentityError" class="hb-identity-error" role="status"></p><button type="submit">Enter Hyperblock</button></form>';
+    gate.innerHTML='<form class="hb-identity-card" id="hbIdentityForm"><p style="letter-spacing:.18em;font-weight:900;color:#16c8e8;font-size:11px">HYPERBLOCK PLAYER PROFILE</p><h1>Choose your player name</h1><p>Your name and player ID are used across Hyperblock multiplayer. Your ID is assigned in order, like (1), (2), (3), and remembered on this browser.</p><label>Player name<input id="hbIdentityName" maxlength="24" minlength="2" required autocomplete="nickname" placeholder="Enter a name"></label><p class="hb-identity-small">Hyperblock connects to its multiplayer server automatically. Your player ID and name are saved by the server; no server URL needed.</p><p id="hbIdentityError" class="hb-identity-error" role="status"></p><button type="submit">Enter Hyperblock</button></form>';
     document.body.append(gate);
-    const name=gate.querySelector("#hbIdentityName"),backend=gate.querySelector("#hbIdentityBackend");
-    name.value=saved.name||"";backend.value=safeGet(BACKEND_KEY)||saved.backend||"";
+    const name=gate.querySelector("#hbIdentityName");
+    name.value=saved.name||"";
     gate.querySelector("#hbIdentityError").textContent=message;
     gate.querySelector("form").addEventListener("submit",async e=>{
       e.preventDefault();
       const chosenName=name.value.trim(),base=backend.value.trim().replace(/\/$/,""),clientId=clientIdentity();
       const err=gate.querySelector("#hbIdentityError");
       if(chosenName.length<2){err.textContent="Please use at least 2 characters for your name.";return}
-      if(!/^https?:\/\//i.test(base)){err.textContent="Enter the full backend URL, starting with https://.";return}
       const submit=gate.querySelector("button");submit.disabled=true;submit.textContent="Registering…";err.textContent="";
       try{
         const response=await fetch(base+"/api/identity/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:chosenName,clientId})});
         const data=await response.json().catch(()=>({}));
         if(!response.ok)throw new Error(data.error||"Registration failed ("+response.status+").");
         const identity={id:data.id,name:data.name,clientId:data.clientId,backend:base};
-        if(!safeSet(IDENTITY_KEY,JSON.stringify(identity))||!safeSet(BACKEND_KEY,base))throw new Error("This browser could not save your profile. Check browser storage settings.");
+        if(!safeSet(IDENTITY_KEY,JSON.stringify(identity)))throw new Error("This browser could not save your profile. Check browser storage settings.");
         window.HyperblockIdentity=identity;paintBadge(identity);gate.remove();resolve(identity);
       }catch(error){err.textContent=error.message+" Check the URL, backend deployment, and CORS settings.";submit.disabled=false;submit.textContent="Enter Hyperblock"}
     });
@@ -70,7 +69,7 @@ export async function requireIdentity(){
       const data=await response.json();
       if(response.ok){
         const identity={id:data.id,name:data.name,clientId:data.clientId,backend:base};
-        safeSet(IDENTITY_KEY,JSON.stringify(identity));safeSet(BACKEND_KEY,base);window.HyperblockIdentity=identity;paintBadge(identity);return identity;
+        safeSet(IDENTITY_KEY,JSON.stringify(identity));window.HyperblockIdentity=identity;paintBadge(identity);return identity;
       }
       return await showGate(saved,data.error||"Please register your profile again.");
     }catch{
