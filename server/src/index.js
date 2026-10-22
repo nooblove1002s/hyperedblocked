@@ -64,6 +64,9 @@ rooms.set("hyperblock-global",{
 });
 const socketRoom=new Map();
 const globalChatHistory=[];
+const recentChatMessages=new Map();
+const chatReports=[];
+function rememberChatMessage(message){recentChatMessages.set(message.id,message);while(recentChatMessages.size>500)recentChatMessages.delete(recentChatMessages.keys().next().value);}
 const socketProfiles=new Map();
 const bannedClientIds=new Map();
 let corruptionEnabled=false;
@@ -206,7 +209,7 @@ io.on("connection",socket=>{
       socket.emit("chat:global:history",{messages:globalChatHistory.slice(-100)});
       if(person.id===1){
         const notice={id:randomUUID(),name:person.name,alias:person.name,isAdmin:true,text:"⚡ AN ADMIN HAS JOINED HYPERBLOCK ⚡",size:4,system:true,at:new Date().toISOString()};
-        globalChatHistory.push(notice);if(globalChatHistory.length>100)globalChatHistory.shift();
+        globalChatHistory.push(notice);if(globalChatHistory.length>100)globalChatHistory.shift();rememberChatMessage(notice);
         io.emit("chat:system",notice);
       }
     }
@@ -235,6 +238,7 @@ io.on("connection",socket=>{
     if(sizeCommand){size=Number(sizeCommand[1]);text=sizeCommand[2].trim();}
     if(!text)return callback({ok:false,error:"Add some text after the size command."});
     const message={id:randomUUID(),playerId:profile.id,name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,badge:profile.badge||"",badgeColor:profile.badgeColor||"cyan",text,size,at:new Date().toISOString()};
+    message.channel="global";rememberChatMessage(message);
     globalChatHistory.push(message);if(globalChatHistory.length>100)globalChatHistory.shift();
     io.emit("chat:global:message",message);
     callback({ok:true});
@@ -255,8 +259,8 @@ io.on("connection",socket=>{
     const sizeCommand=text.match(/^##([1-5])(?:\s+|$)([\s\S]*)$/);
     if(sizeCommand){size=Number(sizeCommand[1]);text=sizeCommand[2].trim();}
     if(!text)return callback({ok:false,error:"Add some text after the size command."});
-    const message={id:randomUUID(),playerId:profile.id,name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,badge:profile.badge||"",badgeColor:profile.badgeColor||"cyan",text,size,at:new Date().toISOString()};
-    io.to(roomId).emit("chat:room:message",message);
+    const message={id:randomUUID(),playerId:profile.id,name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,badge:profile.badge||"",badgeColor:profile.badgeColor||"cyan",text,size,at:new Date().toISOString(),channel:"room"};
+    rememberChatMessage(message);io.to(roomId).emit("chat:room:message",message);
     callback({ok:true});
   });
   socket.on("chat:dm:send",(payload,callback=()=>{})=>{
@@ -280,10 +284,27 @@ io.on("connection",socket=>{
     const sizeCommand=messageText.match(/^##([1-5])(?:\s+|$)([\s\S]*)$/);
     if(sizeCommand){size=Number(sizeCommand[1]);messageText=sizeCommand[2].trim();}
     if(!messageText)return callback({ok:false,error:"Add some text after the size command."});
-    const message={id:randomUUID(),playerId:sender.id,name:sender.name,alias:sender.alias||sender.name,isAdmin:sender.id===1,badge:sender.badge||"",badgeColor:sender.badgeColor||"cyan",text:messageText,size,at:new Date().toISOString(),toName:recipient.name};
-    socket.emit("chat:dm:message",{...message,direction:"sent"});
+    const message={id:randomUUID(),playerId:sender.id,name:sender.name,alias:sender.alias||sender.name,isAdmin:sender.id===1,badge:sender.badge||"",badgeColor:sender.badgeColor||"cyan",text:messageText,size,at:new Date().toISOString(),toName:recipient.name,channel:"dm"};
+    rememberChatMessage(message);socket.emit("chat:dm:message",{...message,direction:"sent"});
     for(const [sid] of online)io.to(sid).emit("chat:dm:message",{...message,direction:"received",toName:sender.name});
     callback({ok:true});
+  });
+  socket.on("chat:report:send",(payload,callback=()=>{})=>{
+    const reporter=socketProfiles.get(socket.id);
+    if(!reporter?.id)return callback({ok:false,error:"Register your profile before reporting messages."});
+    if(!rateLimit(socket,"chat-report",3,60000))return callback({ok:false,error:"You have reached the report limit. Try again later."});
+    const message=recentChatMessages.get(cleanText(payload?.messageId,80));
+    if(!message)return callback({ok:false,error:"That message is no longer available to report."});
+    if(message.playerId===reporter.id)return callback({ok:false,error:"You cannot report your own message."});
+    const reason=cleanText(payload?.reason,300,"Reported by a player")||"Reported by a player";
+    chatReports.push({id:randomUUID(),at:new Date().toISOString(),reporterId:reporter.id,reporterName:reporter.name,targetId:message.playerId,targetName:message.name,messageId:message.id,messageText:cleanText(message.text,500),channel:message.channel||"global",reason});
+    if(chatReports.length>200)chatReports.shift();
+    callback({ok:true});
+  });
+  socket.on("chat:reports:get",(callback=()=>{})=>{
+    if(socketProfiles.get(socket.id)?.id!==1)return callback({ok:false,error:"Only the server-authorized admin can view reports."});
+    socket.emit("chat:reports:list",{reports:chatReports.slice(-50).reverse()});
+    callback({ok:true,count:chatReports.length});
   });
   socket.on("chat:badge:assign",async(payload,callback=()=>{})=>{
     const actor=socketProfiles.get(socket.id);
