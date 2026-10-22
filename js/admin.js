@@ -24,7 +24,7 @@ function renderPeople(root,people){
  people.forEach(p=>{
   const item=document.createElement("article");item.className="ad-person";
   const details=document.createElement("div");
-  details.innerHTML="<strong>"+escapeHTML(p.name)+"</strong><small>Room: "+escapeHTML(p.roomName)+"<br>Client ID: "+escapeHTML(p.clientId||"Not registered")+"<br>Socket: "+escapeHTML(p.socketId)+"</small>";
+  details.innerHTML="<strong>("+Number(p.id||0)+") "+escapeHTML(p.name)+"</strong><small>Room: "+escapeHTML(p.roomName)+"<br>Client ID: "+escapeHTML(p.clientId||"Not registered")+"<br>Socket: "+escapeHTML(p.socketId)+"</small>";
   const actions=document.createElement("div");actions.className="ad-row";
   const ban=document.createElement("button");ban.className="secondary ad-danger";ban.textContent="Ban player";ban.disabled=!p.clientId;
   ban.title=p.clientId?"Ban this browser's multiplayer identity":"Player identity not registered yet";
