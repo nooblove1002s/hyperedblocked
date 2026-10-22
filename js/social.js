@@ -83,6 +83,8 @@ function sendMessage(){
     const target=$("#hbDmTarget",root).value.trim();
     if(!target){setStatus("Enter a player ID or exact username first.");return;}
     socket.emit("chat:dm:send",{target,text},res=>{if(!res?.ok)setStatus(res?.error||"Message could not be sent.");else{setStatus("Private message sent.");input.value="";}});
+  }else if(currentMode==="room"){
+    socket.emit("chat:room:send",{text},res=>{if(!res?.ok)setStatus(res?.error||"Room chat could not send.");else{input.value="";setStatus("Room chat · messages are silent by default.");}});
   }else{
     socket.emit("chat:global:send",{text},res=>{if(!res?.ok)setStatus(res?.error||"Message could not be sent.");else{input.value="";setStatus("Connected · messages are silent by default.");}});
   }
