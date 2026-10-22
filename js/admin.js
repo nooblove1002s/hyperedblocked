@@ -38,11 +38,21 @@ function renderPeople(root,people){
   actions.append(ban);item.append(details,actions);list.append(item);
  });
 }
+function renderRegisteredPeople(root,people){
+ const list=$(root,"#adRegisteredPeople");if(!list)return;list.replaceChildren();
+ if(!people.length){list.innerHTML='<div class="sb-empty">No registered player profiles yet.</div>';return;}
+ people.forEach(p=>{
+  const item=document.createElement("article");item.className="ad-person";
+  const details=document.createElement("div");
+  details.innerHTML="<strong>("+Number(p.id)+") "+escapeHTML(p.name)+"</strong><small>Registered: "+escapeHTML(p.createdAt?new Date(p.createdAt).toLocaleDateString():"date unavailable")+"</small>";
+  item.append(details);list.append(item);
+ });
+}
 async function refresh(root){
  try{
   const data=await api(root,"/api/admin/people");
-  renderPeople(root,data.people||[]);
-  $(root,"#adOnline").textContent=String((data.people||[]).length);
+  renderPeople(root,data.people||[]);\n   renderRegisteredPeople(root,data.registeredPeople||[]);
+  $(root,"#adOnline").textContent=String((data.people||[]).length);\n   const registered=$(root,"#adRegisteredCount");if(registered)registered.textContent=String((data.registeredPeople||[]).length);
   $(root,"#adCorrupt").textContent=data.corruptionEnabled?"ON":"OFF";
   document.body.classList.toggle("hb-corrupted",!!data.corruptionEnabled);
   status(root,"Admin authenticated · refreshed "+new Date().toLocaleTimeString());
@@ -82,6 +92,7 @@ export function initAdmin(){
  const section=document.createElement("section");section.id="adminCenter";section.className="page admin-wrap";
  section.innerHTML='<div class="ad-hero"><p class="eyebrow">RESTRICTED CONTROL PLANE</p><h2>Admin Control Center</h2><p class="ad-muted">Manage multiplayer presence, moderation, and reversible visual chaos. This panel requires the backend admin secret; hiding this page is not security.</p><div class="ad-row"><input id="adBackend" class="ad-input" placeholder="Backend URL (https://your-server.example)"><input id="adKey" class="ad-input" type="password" autocomplete="current-password" placeholder="Admin API secret"><button id="adLogin" class="primary">Authenticate</button></div><div id="adStatus" class="ad-status" role="status">Not authenticated.</div></div>'+
  '<div class="ad-panel"><div class="section-head"><div><p class="eyebrow">LIVE MODERATION</p><h2>Players in rooms</h2></div><div class="ad-row"><strong><span id="adOnline">—</span> players</strong><button id="adRefresh" class="secondary">Refresh</button></div></div><p class="ad-muted">Shows players currently registered in multiplayer rooms. This is not a list of every person visiting the static website.</p><div id="adPeople" class="ad-list"><div class="sb-empty">Authenticate to load player list.</div></div></div>'+
+ '<div class="ad-panel"><div class="section-head"><div><p class="eyebrow">PRIVATE REGISTRY VIEW</p><h2>All registered names and IDs</h2></div><strong><span id="adRegisteredCount">—</span> profiles</strong></div><p class="ad-muted">Loaded only after admin authentication. The private registry file is stored on the backend, not in the public website files.</p><div id="adRegisteredPeople" class="ad-list"><div class="sb-empty">Authenticate to load registered profiles.</div></div></div>'+
  '<div class="ad-panel"><p class="eyebrow">SITE-WIDE EFFECTS</p><h2>Corruption Mode <span id="adCorrupt">—</span></h2><p class="ad-muted">A reversible visual glitch effect. It does not delete files, damage data, or secretly alter visitors\u2019 devices.</p><div class="ad-switch"><div style="flex:1"><strong>Enable visual corruption</strong><div class="ad-glitch-note">Applies glitch colors and subtle text jitter to connected visitors. Turn it off to restore the normal appearance.</div></div><button id="adCorruptOn" class="primary">Enable</button><button id="adCorruptOff" class="secondary">Disable</button></div></div>'+
  '<div class="ad-panel"><p class="eyebrow">ADMIN SAFETY</p><h2>Control responsibly</h2><p class="ad-muted">Bans and corruption settings currently live in backend memory and reset when the backend restarts. Without accounts or durable storage, a user can potentially evade a browser-ID ban by clearing site data or changing browsers.</p></div>';
  document.querySelector("main")?.append(section);
