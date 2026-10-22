@@ -42,7 +42,7 @@ function showGate(saved={},message=""){
     gate.querySelector("#hbIdentityError").textContent=message;
     gate.querySelector("form").addEventListener("submit",async e=>{
       e.preventDefault();
-      const chosenName=name.value.trim(),base=backend.value.trim().replace(/\/$/,""),clientId=clientIdentity();
+      const chosenName=name.value.trim(),base=BACKEND_URL.replace(/\/$/,""),clientId=clientIdentity();
       const err=gate.querySelector("#hbIdentityError");
       if(chosenName.length<2){err.textContent="Please use at least 2 characters for your name.";return}
       const submit=gate.querySelector("button");submit.disabled=true;submit.textContent="Registering…";err.textContent="";
@@ -53,7 +53,7 @@ function showGate(saved={},message=""){
         const identity={id:data.id,name:data.name,clientId:data.clientId,backend:base};
         if(!safeSet(IDENTITY_KEY,JSON.stringify(identity)))throw new Error("This browser could not save your profile. Check browser storage settings.");
         window.HyperblockIdentity=identity;paintBadge(identity);gate.remove();resolve(identity);
-      }catch(error){err.textContent=error.message+" Check the URL, backend deployment, and CORS settings.";submit.disabled=false;submit.textContent="Enter Hyperblock"}
+      }catch(error){err.textContent=error.message+" Hyperblock could not reach its configured server. Try again later.";submit.disabled=false;submit.textContent="Enter Hyperblock"}
     });
   });
 }
