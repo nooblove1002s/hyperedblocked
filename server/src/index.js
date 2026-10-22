@@ -334,7 +334,8 @@ io.on("connection",socket=>{
     if(!text)return callback({ok:false,error:"Enter announcement text."});
     const style=["futuristic","neon","glitch","horror","custom"].includes(payload?.style)?payload.style:"futuristic";
     const sound=["futuristic","glitch","horror","silent"].includes(payload?.sound)?payload.sound:"futuristic";
-    io.emit("chat:announcement",{id:randomUUID(),name:profile.name,title,text,style,sound,at:new Date().toISOString()});
+    const font=["futuristic","scary","mono","serif","custom"].includes(payload?.font)?payload.font:"futuristic";
+    io.emit("chat:announcement",{id:randomUUID(),name:profile.name,title,text,style,font,sound,at:new Date().toISOString()});
     callback({ok:true});
   });
   socket.on("room:create",(payload,callback=()=>{})=>{
