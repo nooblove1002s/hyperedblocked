@@ -93,7 +93,8 @@ async function connect(root){
       connected=true;showStatus(root,"Connected · live updates enabled",true);
       let clientId=localStorage.getItem("hyperblock-client-id");
       if(!clientId){clientId=window.crypto?.randomUUID?.()||("hb-"+Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem("hyperblock-client-id",clientId);}
-      socket.emit("profile:set",{clientId,name:"Player-"+clientId.slice(0,6)},()=>{});
+      const identity=window.HyperblockIdentity||{};
+      socket.emit("profile:set",{clientId:identity.clientId||clientId,name:identity.name||"Player-"+clientId.slice(0,6)},response=>{if(response?.ok&&response.id){identity.id=response.id;window.HyperblockIdentity=identity;}});
       fetchServers(root);
     });
     socket.on("disconnect",()=>{connected=false;showStatus(root,"Disconnected · retrying",false);});
