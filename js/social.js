@@ -38,7 +38,7 @@ const css = `
 `;
 
 let socket = null, root = null, currentMode = "global", currentTarget = "", soundEnabled = false, audioContext = null;
-const history = {global:[],dm:[]};
+const history = {global:[],room:[],dm:[]};
 const $ = (s, r=document) => r.querySelector(s);
 const esc = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function loadSocketClient(){
@@ -123,7 +123,7 @@ async function startConnection(){
     socket.emit("profile:set",{clientId:id.clientId,name:id.name},response=>{
       if(response?.ok){
         id.id=response.id;id.isAdmin=response.isAdmin===true;window.HyperblockIdentity=id;
-        $("#hbAnnouncePanel",root).hidden=!id.isAdmin;
+        $("#hbAnnouncePanel",root).hidden=!(currentMode==="global"&&id.isAdmin);
         setStatus("Connected as "+response.name+" · Global Chat is silent by default.");
         socket.emit("chat:global:history:get");
       }else setStatus(response?.error||"Chat profile authentication failed.");
@@ -134,6 +134,7 @@ async function startConnection(){
   socket.on("connect_error",()=>setStatus("Could not connect to live chat. Check the multiplayer server."));
   socket.on("chat:global:history",payload=>{history.global=Array.isArray(payload?.messages)?payload.messages.slice(-100):[];if(currentMode==="global")renderMessages();});
   socket.on("chat:global:message",receiveGlobal);
+  socket.on("chat:room:message",m=>{history.room.push(m);if(history.room.length>100)history.room.shift();if(currentMode==="room")renderMessages();});
   socket.on("chat:dm:message",receiveDm);
   socket.on("chat:system",receiveGlobal);
   socket.on("chat:announcement",showAnnouncement);
@@ -147,7 +148,7 @@ export function initSocial(){
   addNav(nav);addNav(menu,true);
   const section=document.createElement("section");section.id="hbSocial";section.className="page hb-social";
   section.innerHTML=`<div class="hb-social-hero"><p class="eyebrow">HYPERBLOCK SOCIAL</p><h2 id="hbChatTitle">Global Chat</h2><p class="hb-social-muted">Talk across game rooms. Public and private messages are silent by default; admin announcements are separate overlays.</p><div class="hb-social-status" id="hbSocialStatus">Connecting to live chat…</div></div>
-  <div class="hb-social-tabs"><button type="button" data-chat-mode="global" class="active">🌐 Global Chat</button><button type="button" data-chat-mode="dm">✉ Private Messages</button></div>
+  <div class="hb-social-tabs"><button type="button" data-chat-mode="global" class="active">🌐 Global Chat</button><button type="button" data-chat-mode="room">🎮 Room Chat</button><button type="button" data-chat-mode="dm">✉ Private Messages</button></div>
   <div class="hb-social-layout"><div class="hb-social-panel"><div class="hb-social-messages" id="hbSocialMessages" aria-live="polite"></div>
   <div id="hbDmTargetWrap" class="hb-chat-tools" hidden><label for="hbDmTarget">Player ID or exact username</label><input id="hbDmTarget" placeholder="e.g. 2 or player2" maxlength="80"></div>
   <form class="hb-chat-compose" id="hbChatForm"><input id="hbChatInput" maxlength="500" autocomplete="off" placeholder="Write a message… (##5 makes it huge)" required><button type="submit">Send</button></form>
