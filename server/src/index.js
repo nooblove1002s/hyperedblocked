@@ -102,6 +102,7 @@ function removeSocketFromRoom(socketId){
 }
 function join(socket,payload,callback=()=>{}){
   const profile=socketProfiles.get(socket.id)||{};
+  if(!profile.id)return callback({ok:false,error:"Choose and register a Hyperblock player name before joining a room."});
   if(profile.clientId&&bannedClientIds.has(profile.clientId))return callback({ok:false,error:"This player is banned from Hyperblock multiplayer."});
   const roomId=cleanText(payload?.roomId,80);
   const room=rooms.get(roomId);
@@ -195,6 +196,7 @@ io.on("connection",socket=>{
     socketProfiles.set(socket.id,{name:person.name,clientId,id:person.id});callback({ok:true,id:person.id,name:person.name});
   });
   socket.on("room:create",(payload,callback=()=>{})=>{
+    if(!socketProfiles.get(socket.id)?.id)return callback({ok:false,error:"Register your Hyperblock player name before creating a room."});
     if(!rateLimit(socket,"create",5))return callback({ok:false,error:"Too many room creations. Wait a moment."});
     const maxPlayers=Number(payload?.maxPlayers);
     if(!Number.isInteger(maxPlayers)||maxPlayers<1||maxPlayers>MAX_ROOM_LIMIT)return callback({ok:false,error:"Maximum players must be between 1 and "+MAX_ROOM_LIMIT+"."});
