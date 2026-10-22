@@ -21,7 +21,7 @@ export function initSpinArena(){
 #pbStandalone .pbform{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 #pbStandalone label{display:grid;gap:4px;color:#b8d7e5;font-size:12px;min-width:0}
 #pbStandalone input,#pbStandalone select,#pbStandalone textarea{width:100%;min-width:0;background:#061722;color:#e8f7ff;border:1px solid #31566a;border-radius:6px;padding:7px}
-#pbStandalone h3{font-size:15px;margin:14px 0 8px}#pbStandalone .pbmuted{color:#9ab8c8;font-size:12px;line-height:1.5}
+#pbStandalone h3{font-size:15px;margin:14px 0 8px}#pbStandalone details.pbsection{border-top:1px solid #23475b;padding:8px 0}#pbStandalone details.pbsection>summary{cursor:pointer;list-style:none;font-weight:750;color:#e8f7ff;padding:5px 2px}#pbStandalone details.pbsection>summary::-webkit-details-marker{display:none}#pbStandalone details.pbsection>summary:after{content:"＋";float:right;color:#75e6f8}#pbStandalone details.pbsection[open]>summary:after{content:"−"}#pbStandalone details.pbsection[open]>summary{margin-bottom:8px}#pbStandalone .pbmuted{color:#9ab8c8;font-size:12px;line-height:1.5}
 #pbStandalone #pbDraw{height:100px;touch-action:none}#pbStandalone .pbstats{display:flex;gap:12px;flex-wrap:wrap;color:#bdeafa;margin:8px 0}
 #pbStandalone .pbstats b{color:#fff}#pbStandalone .pbfighters{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:6px;margin-top:8px}
 #pbStandalone .pbfighter{padding:8px;background:#071a28;border:1px solid #25485a;border-radius:8px;display:grid;gap:5px}
@@ -67,6 +67,16 @@ knockback=5
 gravity=0
 friction=0.985</textarea><div class="pbbar"><button id="pbApplyRules">Apply rules</button><button id="pbSave">Save setup</button><button id="pbLoad">Load setup</button><button id="pbMusic">♫ Music: Off</button></div><h3>Report a bug</h3><p class="pbmuted">Describe what happened and copy a diagnostic report to share with the Hyperblock developer or ChatGPT. This does not automatically publish anything.</p><label>What went wrong?<textarea id="pbBugDetails" rows="3" placeholder="Example: Switching to Raid then starting creates no raiders."></textarea></label><div class="pbbar"><button id="pbCopyBug" class="primary">Copy bug report</button><span id="pbBugStatus" class="pbmuted" role="status"></span></div><p class="pbmuted">No fixed roster maximum is imposed by the interface. Large battles use more CPU/GPU, so performance depends on the device. Gravity defaults to zero; knockback is damped and speed-capped so a hit doesn't send a fighter endlessly across the arena.</p></div></div></div>`;
  document.body.append(app);
+ // Group the long builder into collapsible sections so controls are easier to find on mobile.
+ app.querySelectorAll(".pbpanel").forEach(panel=>{
+  const headings=[...panel.querySelectorAll(":scope > h3")];
+  headings.forEach((heading,index)=>{
+   const section=document.createElement("details");section.className="pbsection";section.open=index===0;
+   heading.before(section);section.append(heading);
+   let node=section.nextSibling;
+   while(node&&!(node.nodeType===1&&node.matches("h3"))){const next=node.nextSibling;section.append(node);node=next;}
+  });
+ });
  const q=id=>$("#"+id,app), canvas=q("pbArena"),ctx=canvas.getContext("2d"),drawCanvas=q("pbDraw"),dctx=drawCanvas.getContext("2d");
  const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)), val=(id,def)=>{const n=Number(q(id).value);return Number.isFinite(n)?n:def};
  const palette=["#20d7ee","#ff9b45","#bb87ff","#a8ed69","#ff688a","#ffe16b","#70a6ff","#ff8cde","#ff6d4a","#6cf2b3","#f1f4ff","#c7a0ff"];
