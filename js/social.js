@@ -63,6 +63,7 @@ function displayName(message){return message.alias||message.name||"Player";}
 function renderMessages(){
   const box=$("#hbSocialMessages",root);if(!box)return;
   const blocked=getBlockedPlayers();
+  renderBlockedList();
   const list=(history[currentMode]||[]).filter(m=>!blocked.includes(Number(m.playerId)));
   box.replaceChildren();
   if(!list.length){const p=document.createElement("p");p.className="hb-social-empty";p.textContent=currentMode==="dm"?"Your private messages will appear here. Enter a player ID or name to start.":"No messages yet. Say hello to everyone online.";box.append(p);return;}
@@ -96,7 +97,7 @@ function sendMessage(){
   if(currentMode==="dm"){
     const target=$("#hbDmTarget",root).value.trim();
     if(!target){setStatus("Enter a player ID or exact username first.");return;}
-    socket.emit("chat:dm:send",{target,text},res=>{if(!res?.ok)setStatus(res?.error||"Message could not be sent.");else{setStatus("Private message sent.");input.value="";}});
+    socket.emit("chat:dm:send",{target,text},res=>{if(!res?.ok)setStatus(res?.error||"Message could not be sent.");else{setStatus(res?.alias?"Display alias changed to "+res.alias+".":"Private message sent.");input.value="";}});
   }else if(currentMode==="room"){
     socket.emit("chat:room:send",{text},res=>{if(!res?.ok)setStatus(res?.error||"Room chat could not send.");else{input.value="";setStatus("Room chat · messages are silent by default.");}});
   }else{
