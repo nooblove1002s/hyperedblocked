@@ -342,6 +342,7 @@ function setupSettings(){
     ls.set("noobonly1-quick-exit",url);
     window.location.href = url;
   });
+  $("#runDiagnostics")?.addEventListener("click", diagnostics);
 }
 
 async function diagnostics(){
