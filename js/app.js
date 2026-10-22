@@ -5,7 +5,6 @@ import { setupWebSearch } from "./tools/browser.js";
 import { initServerBrowser } from "./server-browser.js";
 import { initAdmin } from "./admin.js";
 import { requireIdentity } from "./identity.js";
-import { initSpinArena } from "./spin-arena.js";
 // Safe localStorage: never throws (blocked storage, private mode, corrupt data)
 const ls = {
   get(key){ try{ return localStorage.getItem(key); }catch(e){ return null; } },
@@ -45,6 +44,20 @@ function showPage(page){
   $$(".desktop-nav button").forEach(el => el.classList.toggle("active", el.dataset.page === page));
   $("#mobileMenu")?.classList.remove("open");
   window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function loadSpinArena(){
+  import("./spin-arena.js").then(module => module.initSpinArena()).catch(error => {
+    console.error("Physics Battle Lab failed to load:", error);
+    const page = $("#original");
+    if(page && !$("#spinArenaLoadError")){
+      const note = document.createElement("p");
+      note.id = "spinArenaLoadError";
+      note.className = "muted";
+      note.textContent = "Physics Battle Lab could not start. Other Hyperblock features should remain available; the game script needs repair.";
+      page.append(note);
+    }
+  });
 }
 
 function addRecent(game){
@@ -370,7 +383,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   try{ await requireIdentity(); }catch(error){ console.error("Player identity setup failed:",error); }
 
   // One broken UI feature must not block the rest of the portal
-  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings, initSpinArena, initServerBrowser, initAdmin]){
+  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings, loadSpinArena, initServerBrowser, initAdmin]){
     try{ step(); }catch(e){ console.error(`${step.name} failed:`, e); }
   }
 
