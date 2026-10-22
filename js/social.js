@@ -89,7 +89,7 @@ function renderMessages(){
   }
   box.scrollTop=box.scrollHeight;renderBlockedList();
 }
-function receiveGlobal(m){history.global.push(m);if(history.global.length>100)history.global.shift();if(currentMode==="global")renderMessages();}
+function receiveGlobal(m){if(history.global.some(existing=>existing.id===m.id))return;history.global.push(m);if(history.global.length>100)history.global.shift();if(currentMode==="global")renderMessages();}
 function receiveDm(m){history.dm.push(m);if(history.dm.length>100)history.dm.shift();if(currentMode==="dm")renderMessages();}
 function sendMessage(){
   const input=$("#hbChatInput",root),text=input.value.trim();if(!text)return;
