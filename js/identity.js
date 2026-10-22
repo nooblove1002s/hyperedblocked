@@ -62,7 +62,7 @@ export async function requireIdentity(){
   const raw=safeGet(IDENTITY_KEY);let saved={};
   try{saved=JSON.parse(raw)||{}}catch{}
   const clientId=clientIdentity();
-  const base=(safeGet(BACKEND_KEY)||saved.backend||"").replace(/\/$/,"");
+  const base=BACKEND_URL.replace(/\/$/,"");
   if(saved.id&&saved.name&&base){
     try{
       const response=await fetch(base+"/api/identity/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:saved.name,clientId:saved.clientId||clientId})});
