@@ -211,6 +211,11 @@ io.on("connection",socket=>{
       }
     }
   });
+  socket.on("chat:global:history:get",(callback=()=>{})=>{
+    if(!socketProfiles.get(socket.id)?.id)return callback({ok:false,error:"Register your profile before loading chat history."});
+    socket.emit("chat:global:history",{messages:globalChatHistory.slice(-100)});
+    callback({ok:true});
+  });
   socket.on("chat:global:send",(payload,callback=()=>{})=>{
     const profile=socketProfiles.get(socket.id);
     if(!profile?.id)return callback({ok:false,error:"Register your Hyperblock profile before chatting."});
