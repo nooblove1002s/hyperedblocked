@@ -33,7 +33,7 @@ setTimeout(function(){
     if(t) t.textContent="Still loading — the portal will open shortly.";
   }
   window.__finishIntro();
-}, 14000);
+}, 7000);
 document.addEventListener("DOMContentLoaded", function(){
   var v=document.getElementById("introVideo");
   var sound=document.getElementById("introSoundBtn");
@@ -54,20 +54,18 @@ document.addEventListener("DOMContentLoaded", function(){
     sound.disabled=true;
   }
   function useVideoFallback(){
+    // The intro MP4 is not guaranteed to exist or load on GitHub Pages.
+    // Never leave a black video rectangle covering the branded fallback.
     if(introFrame) return;
-    introFrame=document.createElement("iframe");
-    introFrame.className="intro-video intro-frame";
-    introFrame.title="Hyperblock intro video";
-    introFrame.allow="autoplay; encrypted-media; picture-in-picture";
-    introFrame.setAttribute("allowfullscreen","");
-    introFrame.src="https://www.youtube.com/embed/O3PTpp25Sfk?autoplay=1&playsinline=1&controls=0&mute=1&rel=0&modestbranding=1&enablejsapi=1";
-    if(v) v.replaceWith(introFrame);
-    if(fallback) fallback.classList.remove("show");
-    if(sound){sound.hidden=false;sound.textContent="🔊 Tap for sound";}
+    if(v){ try{v.pause();}catch(e){} v.remove(); }
+    if(fallback) fallback.classList.add("show");
+    if(sound) sound.hidden=true;
   }
   if(v){
     v.addEventListener("ended", window.__finishIntro, {once:true});
     v.addEventListener("error", useVideoFallback, {once:true});
+    // Some mobile browsers do not dispatch the media error promptly.
+    setTimeout(function(){ if(v && v.isConnected && v.readyState < 2) useVideoFallback(); }, 2200);
     // Try unmuted autoplay first. If the browser blocks it, retry muted and
     // keep the sound button available for the first user interaction.
     v.muted=false; v.volume=1;
