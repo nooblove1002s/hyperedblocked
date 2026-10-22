@@ -51,7 +51,8 @@ function renderRegisteredPeople(root,people){
 async function refresh(root){
  try{
   const data=await api(root,"/api/admin/people");
-  renderPeople(root,data.people||[]);\n   renderRegisteredPeople(root,data.registeredPeople||[]);
+  renderPeople(root,data.people||[]);
+  renderRegisteredPeople(root,data.registeredPeople||[]);
   $(root,"#adOnline").textContent=String((data.people||[]).length);\n   const registered=$(root,"#adRegisteredCount");if(registered)registered.textContent=String((data.registeredPeople||[]).length);
   $(root,"#adCorrupt").textContent=data.corruptionEnabled?"ON":"OFF";
   document.body.classList.toggle("hb-corrupted",!!data.corruptionEnabled);
