@@ -52,7 +52,7 @@ function showGate(saved={},message=""){
       const chosenName=name.value.trim();
       const err=gate.querySelector("#hbIdentityError");
       if(chosenName.length<2){err.textContent="Please use at least 2 characters for your name.";return;}
-      const identity={id:null,name:chosenName,clientId:clientIdentity(),backend:BACKEND_URL.replace(/\\/$/,""),offline:true};
+      const identity={id:null,name:chosenName,clientId:clientIdentity(),backend:BACKEND_URL.replace(/\/$/,""),offline:true};
       if(!safeSet(IDENTITY_KEY,JSON.stringify(identity))){err.textContent="This browser could not save your profile. Check browser storage settings.";return;}
       window.HyperblockIdentity=identity;paintBadge(identity);gate.remove();resolve(identity);
     });
