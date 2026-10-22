@@ -89,7 +89,13 @@ async function connect(root){
   try{
     await loadSocketClient();
     socket=window.io(base,{transports:["websocket","polling"],timeout:6000,reconnection:true});
-    socket.on("connect",()=>{connected=true;showStatus(root,"Connected · live updates enabled",true);fetchServers(root);});
+    socket.on("connect",()=>{
+      connected=true;showStatus(root,"Connected · live updates enabled",true);
+      let clientId=localStorage.getItem("hyperblock-client-id");
+      if(!clientId){clientId=window.crypto?.randomUUID?.()||("hb-"+Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem("hyperblock-client-id",clientId);}
+      socket.emit("profile:set",{clientId,name:"Player-"+clientId.slice(0,6)},()=>{});
+      fetchServers(root);
+    });
     socket.on("disconnect",()=>{connected=false;showStatus(root,"Disconnected · retrying",false);});
     socket.on("server:list",payload=>{servers=Array.isArray(payload.servers)?payload.servers:[];connected=true;render(root);});
     socket.on("stats:update",()=>fetchServers(root));
