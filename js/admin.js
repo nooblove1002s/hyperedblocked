@@ -13,7 +13,11 @@ function backend(root){return ($(root,"#adBackend").value.trim()||BACKEND_URL).r
 function key(root){return $(root,"#adKey").value.trim();}
 async function api(root,path,options={}){
  const base=backend(root);if(!base)throw new Error("Enter the deployed multiplayer backend URL first.");
- const response=await fetch(base+path,{...options,headers:{"Content-Type":"application/json","x-admin-key":key(root),...(options.headers||{})}});
+ const identity=window.HyperblockIdentity||{};
+ const headers={"Content-Type":"application/json",...(options.headers||{})};
+ if(Number(identity.id)===1&&identity.clientId)headers["x-hyperblock-client-id"]=identity.clientId;
+ else headers["x-admin-key"]=key(root);
+ const response=await fetch(base+path,{...options,headers});
  const data=await response.json().catch(()=>({}));
  if(!response.ok)throw new Error(data.error||"Request failed ("+response.status+").");
  return data;
@@ -102,9 +106,9 @@ export function initAdmin(){
  document.querySelectorAll('[data-page="admin"]').forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".page").forEach(p=>p.classList.toggle("active",p.id==="adminCenter"));document.querySelectorAll(".desktop-nav button").forEach(x=>x.classList.toggle("active",x===b));document.getElementById("mobileMenu")?.classList.remove("open");window.scrollTo({top:0,behavior:"smooth"});}));
  const root=section;
  $(root,"#adBackend").value=BACKEND_URL;
- $(root,"#adLogin").addEventListener("click",async()=>{if(!key(root)){status(root,"Enter the admin secret configured on the backend.");return;}try{await api(root,"/api/admin/people");status(root,"Admin authentication successful.");await watchCorruption(root);await refresh(root);}catch(e){status(root,e.message);}});
+ $(root,"#adLogin").addEventListener("click",async()=>{const identity=window.HyperblockIdentity||{};if(Number(identity.id)!==1&&!key(root)){status(root,"Player (1) can authenticate automatically; other players need the admin secret.");return;}try{await api(root,"/api/admin/people");status(root,Number(identity.id)===1?"Authenticated as Hyperblock owner (Player 1).":"Admin authentication successful.");await watchCorruption(root);await refresh(root);}catch(e){status(root,e.message);}});
  $(root,"#adRefresh").addEventListener("click",()=>refresh(root));
  $(root,"#adCorruptOn").addEventListener("click",()=>setCorruption(root,true));
  $(root,"#adCorruptOff").addEventListener("click",()=>setCorruption(root,false));
- refreshTimer=setInterval(()=>{if(document.getElementById("adminCenter")?.classList.contains("active")&&key(root))refresh(root);},20000);
+ refreshTimer=setInterval(()=>{const identity=window.HyperblockIdentity||{};if(document.getElementById("adminCenter")?.classList.contains("active")&&(key(root)||Number(identity.id)===1))refresh(root);},20000);
 }
