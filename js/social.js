@@ -114,24 +114,30 @@ async function startConnection(){
   const identity=window.HyperblockIdentity;
   if(!identity){setStatus("Choose a Hyperblock player profile to connect chat.");return;}
   if(identity.offline||!identity.id){setStatus("You are offline. Re-enter Hyperblock online to use live chat.");return;}
-  try{
-    await loadSocketClient();
-    socket=window.io(BACKEND_URL.replace(/\/$/,""),{transports:["websocket","polling"],timeout:8000,reconnection:true});
-    socket.on("connect",()=>{
-      const id=window.HyperblockIdentity||identity;
-      socket.emit("profile:set",{clientId:id.clientId,name:id.name},response=>{
-        if(response?.ok){setStatus("Connected as "+response.name+" · Global Chat is silent by default.");}
-        else setStatus(response?.error||"Chat profile authentication failed.");
-      });
+  for(let n=0;n<120&&!window.HyperblockSocket;n++)await new Promise(resolve=>setTimeout(resolve,250));
+  socket=window.HyperblockSocket;
+  if(!socket){setStatus("The multiplayer connection did not start. Open Servers and try again.");return;}
+  const authenticate=()=>{
+    const id=window.HyperblockIdentity||identity;
+    if(id.offline||!id.id)return;
+    socket.emit("profile:set",{clientId:id.clientId,name:id.name},response=>{
+      if(response?.ok){
+        id.id=response.id;id.isAdmin=response.isAdmin===true;window.HyperblockIdentity=id;
+        $("#hbAnnouncePanel",root).hidden=!id.isAdmin;
+        setStatus("Connected as "+response.name+" · Global Chat is silent by default.");
+        socket.emit("chat:global:history:get");
+      }else setStatus(response?.error||"Chat profile authentication failed.");
     });
-    socket.on("disconnect",()=>setStatus("Disconnected · trying to reconnect…"));
-    socket.on("connect_error",()=>setStatus("Could not connect to live chat. Check the multiplayer server."));
-    socket.on("chat:global:history",payload=>{history.global=Array.isArray(payload?.messages)?payload.messages.slice(-100):[];if(currentMode==="global")renderMessages();});
-    socket.on("chat:global:message",receiveGlobal);
-    socket.on("chat:dm:message",receiveDm);
-    socket.on("chat:system",receiveGlobal);
-    socket.on("chat:announcement",showAnnouncement);
-  }catch(error){setStatus(error.message||"Could not start live chat.");}
+  };
+  socket.on("connect",authenticate);
+  socket.on("disconnect",()=>setStatus("Disconnected · trying to reconnect…"));
+  socket.on("connect_error",()=>setStatus("Could not connect to live chat. Check the multiplayer server."));
+  socket.on("chat:global:history",payload=>{history.global=Array.isArray(payload?.messages)?payload.messages.slice(-100):[];if(currentMode==="global")renderMessages();});
+  socket.on("chat:global:message",receiveGlobal);
+  socket.on("chat:dm:message",receiveDm);
+  socket.on("chat:system",receiveGlobal);
+  socket.on("chat:announcement",showAnnouncement);
+  if(socket.connected)authenticate();
 }
 export function initSocial(){
   if($("#hbSocial"))return;
