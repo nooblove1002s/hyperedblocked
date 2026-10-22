@@ -5,14 +5,17 @@ const pick = a => Array.isArray(a) ? a : (a && typeof a === "object"
 
 async function tryOne(url, timeout = 4000){
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), timeout);
+  // Resolve from this module's location so project pages such as
+  // /hyperedblocked/ still fetch /hyperedblocked/data/games.json reliably.
+  const resolved = new URL("../../" + url.replace(/^\/+/, ""), import.meta.url);
   try{
     if(/\.json$/i.test(url)){
-      const r = await fetch(url, {cache:"no-store", signal:ctrl.signal});
+      const r = await fetch(resolved.href, {cache:"no-store", signal:ctrl.signal});
       return r.ok ? await r.json() : null;
     }
-    const h = await fetch(url, {cache:"no-store", signal:ctrl.signal, method:"HEAD"});
+    const h = await fetch(resolved.href, {cache:"no-store", signal:ctrl.signal, method:"HEAD"});
     if(!h.ok) return null;
-    const m = await import(new URL(url, document.baseURI).href);
+    const m = await import(resolved.href);
     return m.default ?? m.games ?? m.GAMES ?? m.catalog ?? m ?? window.GAMES ?? window.games;
   }catch(e){ return null; }
   finally{ clearTimeout(t); }
