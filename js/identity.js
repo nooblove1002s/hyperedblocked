@@ -2,10 +2,13 @@ import { BACKEND_URL } from "./config.js";
 const IDENTITY_KEY="hyperblock-identity";
 const safeGet=k=>{try{return localStorage.getItem(k)||""}catch{return ""}};
 const safeSet=(k,v)=>{try{localStorage.setItem(k,v);return true}catch{return false}};
-function fetchWithTimeout(url,options={},timeoutMs=4500){
+function fetchWithTimeout(url,options={},timeoutMs=15000){
   const controller=new AbortController();
   const timeout=setTimeout(()=>controller.abort(),timeoutMs);
-  return fetch(url,{...options,signal:controller.signal}).finally(()=>clearTimeout(timeout));
+  return fetch(url,{...options,signal:controller.signal}).catch(error=>{
+    if(controller.signal.aborted)throw new Error("The multiplayer server did not respond within 15 seconds.");
+    throw error;
+  }).finally(()=>clearTimeout(timeout));
 }
 function clientIdentity(){
   let id=safeGet("hyperblock-client-id");
@@ -63,7 +66,7 @@ function showGate(saved={},message=""){
       if(chosenName.length<2){err.textContent="Please use at least 2 characters for your name.";return}
       const submit=gate.querySelector("button");submit.disabled=true;submit.textContent="Registering…";err.textContent="";
       try{
-        const response=await fetchWithTimeout(base+"/api/identity/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:chosenName,clientId})},4500);
+        const response=await fetchWithTimeout(base+"/api/identity/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:chosenName,clientId})},15000);
         const data=await response.json().catch(()=>({}));
         if(!response.ok)throw new Error(data.error||"Registration failed ("+response.status+").");
         const identity={id:data.id,name:data.name,clientId:data.clientId,isAdmin:data.isAdmin===true||Number(data.id)===1,backend:base};
