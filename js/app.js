@@ -4,6 +4,7 @@ import { openPlayer, setupPlayer } from "./games/player.js";
 import { setupWebSearch } from "./tools/browser.js";
 import { initServerBrowser } from "./server-browser.js";
 import { initAdmin } from "./admin.js";
+import { initSocial } from "./social.js";
 import { requireIdentity } from "./identity.js";
 // Safe localStorage: never throws (blocked storage, private mode, corrupt data)
 const ls = {
@@ -384,7 +385,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
 
   // Wire the portal controls before waiting on identity or the multiplayer API.
   // A slow/unavailable identity backend must not delay navigation and local tools.
-  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings, loadSpinArena, initServerBrowser, initAdmin]){
+  for(const step of [setupPlayer, setupWebSearch, setupNavigation, setupGameControls, setupJS, setupSettings, loadSpinArena, initServerBrowser, initAdmin, initSocial]){
     try{ step(); }catch(e){ console.error(`${step.name} failed:`, e); }
   }
 
