@@ -218,15 +218,15 @@ io.on("connection",socket=>{
     if(!rateLimit(socket,"chat-global",6,10000))return callback({ok:false,error:"Slow down a little before sending more messages."});
     let text=cleanText(payload?.text,500);
     if(!text)return callback({ok:false,error:"Write a message first."});
-    const aliasCommand=text.match(/^\\*#([A-Za-z0-9_-]{1,24})$/);
+    const aliasCommand=text.match(/^\*#([A-Za-z0-9_-]{1,24})$/);
     if(aliasCommand){
       profile.alias=aliasCommand[1];socketProfiles.set(socket.id,profile);
       return callback({ok:true,alias:profile.alias,message:"Display alias changed to "+profile.alias+"."});
     }
-    const aliasAndText=text.match(/^\\*#([A-Za-z0-9_-]{1,24})\\s+([\\s\\S]+)$/);
+    const aliasAndText=text.match(/^\*#([A-Za-z0-9_-]{1,24})\s+([\s\S]+)$/);
     if(aliasAndText){profile.alias=aliasAndText[1];text=aliasAndText[2].trim();socketProfiles.set(socket.id,profile);if(!text)return callback({ok:true,alias:profile.alias});}
     let size=3;
-    const sizeCommand=text.match(/^##([1-5])(?:\\s+|$)([\\s\\S]*)$/);
+    const sizeCommand=text.match(/^##([1-5])(?:\s+|$)([\s\S]*)$/);
     if(sizeCommand){size=Number(sizeCommand[1]);text=sizeCommand[2].trim();}
     if(!text)return callback({ok:false,error:"Add some text after the size command."});
     const message={id:randomUUID(),name:profile.name,alias:profile.alias||profile.name,isAdmin:profile.id===1,text,size,at:new Date().toISOString()};
@@ -248,7 +248,7 @@ io.on("connection",socket=>{
     const online=[...socketProfiles.entries()].filter(([sid,p])=>p.id===recipient.id&&io.sockets.sockets.has(sid));
     if(!online.length)return callback({ok:false,error:"That player is offline right now."});
     let messageText=text,size=3;
-    const sizeCommand=messageText.match(/^##([1-5])(?:\\s+|$)([\\s\\S]*)$/);
+    const sizeCommand=messageText.match(/^##([1-5])(?:\s+|$)([\s\S]*)$/);
     if(sizeCommand){size=Number(sizeCommand[1]);messageText=sizeCommand[2].trim();}
     if(!messageText)return callback({ok:false,error:"Add some text after the size command."});
     const message={id:randomUUID(),name:sender.name,alias:sender.alias||sender.name,isAdmin:sender.id===1,text:messageText,size,at:new Date().toISOString(),toName:recipient.name};
