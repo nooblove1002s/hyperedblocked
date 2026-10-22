@@ -97,6 +97,7 @@ async function connect(root){
       fetchServers(root);
     });
     socket.on("disconnect",()=>{connected=false;showStatus(root,"Disconnected · retrying",false);});
+    socket.on("corruption:update",payload=>{document.body.classList.toggle("hb-corrupted",!!payload?.enabled);});
     socket.on("server:list",payload=>{servers=Array.isArray(payload.servers)?payload.servers:[];connected=true;render(root);});
     socket.on("stats:update",()=>fetchServers(root));
     socket.on("connect_error",()=>{connected=false;showStatus(root,"Could not connect. Check backend URL and CORS.",false);});
