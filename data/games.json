@@ -618,5 +618,15 @@
     "source": "CrazyGames",
     "embed": false,
     "featured": false
+  },
+  {
+    "id": "undertale-10th-anniversary",
+    "name": "UNDERTALE 10th Anniversary",
+    "category": "Arcade",
+    "icon": "❤️",
+    "url": "https://ut10-battle.undertale.com/",
+    "source": "Toby Fox — Official",
+    "embed": false,
+    "featured": true
   }
 ]
