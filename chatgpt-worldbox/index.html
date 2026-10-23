@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#142a22">
+<title>ChatGPT-WorldBox — World Sandbox</title>
+<style>
+:root{color-scheme:dark;--bg:#101b19;--panel:#192723;--panel2:#22352e;--line:#3b5448;--text:#f0f5e9;--muted:#a9b9ac;--gold:#f1c86b;--green:#86d99b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit}button{cursor:pointer;color:inherit;background:#2b4137;border:1px solid var(--line);border-radius:9px;padding:9px 11px}button:hover{filter:brightness(1.14)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:2px}.app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;background:#14211d;border-bottom:1px solid var(--line)}.logo{font-size:19px;font-weight:900;letter-spacing:.02em}.logo span{color:var(--gold)}.tag{color:var(--muted);font-size:12px}.top-actions{display:flex;gap:7px;flex-wrap:wrap;margin-left:auto}.layout{display:grid;grid-template-columns:220px minmax(0,1fr) 250px;gap:10px;padding:10px;min-height:0}.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:12px;min-width:0}.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 10px}.tool-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.tool{display:flex;align-items:center;gap:7px;text-align:left;min-height:43px}.tool.active{border-color:var(--gold);background:#554a2c}.swatch{width:15px;height:15px;border-radius:4px;flex:none;border:1px solid #ffffff44}.section{margin-top:18px}.small{font-size:12px;color:var(--muted)}.field{display:grid;gap:5px;margin:10px 0}.field label{color:var(--muted);font-size:12px}.field input,.field select{width:100%;min-width:0;background:#101a17;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px}.map-wrap{min-width:0;display:flex;flex-direction:column;gap:8px}.map-head{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}.map-stage{position:relative;flex:1;min-height:400px;border:1px solid var(--line);border-radius:13px;background:#0b1512;overflow:hidden;display:grid;place-items:center}canvas{display:block;max-width:100%;max-height:100%;image-rendering:pixelated;touch-action:none}.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:12px}.legend span{display:flex;align-items:center;gap:5px}.stats{display:grid;grid-template-columns:1fr 1fr;gap:7px}.stat{padding:9px;background:#101a17;border:1px solid var(--line);border-radius:9px}.stat strong{display:block;font-size:19px}.stat span{font-size:11px;color:var(--muted)}.event-log{display:flex;flex-direction:column;gap:8px;max-height:270px;overflow:auto}.event{padding:8px;border-left:2px solid var(--gold);background:#101a17;border-radius:0 7px 7px 0;font-size:12px}.notice{color:var(--muted);font-size:12px;margin:10px 0 0}.primary{background:#66552c;border-color:#aa8b43}.danger{background:#482c2b}.pill{border-radius:999px;padding:5px 9px;background:#101a17;border:1px solid var(--line);font-size:12px}.mobile-tabs{display:none}.footer{padding:0 12px 12px;color:var(--muted);font-size:11px;text-align:center}
+@media(max-width:950px){.layout{grid-template-columns:190px minmax(0,1fr)}.right-panel{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px}.right-panel>section{min-width:0}.event-log{max-height:160px}}
+@media(max-width:650px){.top{padding:10px}.logo{font-size:17px}.tag{display:none}.top-actions{width:100%;margin-left:0}.top-actions button{flex:1;padding:8px 6px}.layout{display:flex;flex-direction:column;padding:7px}.left-panel{order:2}.map-wrap{order:1}.right-panel{order:3;display:flex;flex-direction:column}.map-stage{min-height:45vh;max-height:58vh}.tool-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.tool{flex-direction:column;justify-content:center;text-align:center;font-size:11px;gap:3px;min-height:54px;padding:5px}.section{margin-top:12px}.panel{padding:10px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top">
+  <div><div class="logo">🌎 ChatGPT-<span>WorldBox</span></div><div class="tag">A living world, shaped by you.</div></div>
+  <div class="top-actions">
+    <button id="playBtn" class="primary">▶ Play</button><button id="stepBtn">⏭ Step</button>
+    <button id="saveBtn">💾 Save</button><button id="loadBtn">↩ Load</button>
+    <button id="newBtn">🌱 New world</button>
+  </div>
+</header>
+<main class="layout">
+<aside class="panel left-panel">
+  <h2>God tools</h2>
+  <div id="tools" class="tool-grid"></div>
+  <div class="section">
+    <h2>World settings</h2>
+    <div class="field"><label for="worldName">World name</label><input id="worldName" maxlength="36" value="First World"></div>
+    <div class="field"><label for="brushSize">Brush size</label><input id="brushSize" type="range" min="1" max="5" value="1"><span id="brushLabel" class="small">1 tile</span></div>
+    <div class="field"><label for="speed">Simulation speed</label><select id="speed"><option value="1">1× — Calm</option><option value="2">2×</option><option value="4">4×</option><option value="8">8× — Fast</option></select></div>
+    <div class="field"><label for="worldSize">New world size</label><select id="worldSize"><option value="48x30">Small (48 × 30)</option><option value="64x40" selected>Medium (64 × 40)</option><option value="84x52">Large (84 × 52)</option></select></div>
+    <button id="generateBtn" style="width:100%">Generate terrain</button>
+  </div>
+  <p class="notice">Choose a tool, then tap or drag on the map. Your worlds are stored in this browser on this device.</p>
+</aside>
+<section class="map-wrap">
+  <div class="map-head"><div><strong id="mapName">First World</strong> <span id="worldAge" class="pill">Year 1 · Day 1</span></div><span id="status" class="pill">Paused</span></div>
+  <div class="map-stage"><canvas id="world" width="768" height="480" aria-label="Interactive pixel world map"></canvas></div>
+  <div class="legend"><span><i class="swatch" style="background:#4caa58"></i>Grass</span><span><i class="swatch" style="background:#2679a5"></i>Water</span><span><i class="swatch" style="background:#8c7449"></i>Mountain</span><span>● Citizens</span><span>◆ Settlement</span></div>
+</section>
+<aside class="panel right-panel">
+  <section><h2>World overview</h2><div class="stats">
+    <div class="stat"><strong id="citizenCount">0</strong><span>Citizens</span></div>
+    <div class="stat"><strong id="settlementCount">0</strong><span>Settlements</span></div>
+    <div class="stat"><strong id="landCount">0%</strong><span>Land</span></div>
+    <div class="stat"><strong id="dayCount">1</strong><span>Simulated days</span></div>
+  </div>
+  <div class="section"><h2>Selected tile</h2><div id="tileInfo" class="small">Tap a tile to inspect its terrain and life.</div></div></section>
+  <section><h2>World history</h2><div id="history" class="event-log"><div class="event">Year 1: A new world begins. Shape the land and introduce life.</div></div><p class="notice">Major events are logged here. History and simulation systems will expand as development progresses.</p></section>
+</aside>
+</main>
+<div class="footer">ChatGPT-WorldBox · Foundation build · Original prototype art and code</div>
+</div>
+<script>
+(function(){
+"use strict";
+const canvas=document.getElementById("world"),ctx=canvas.getContext("2d");
+const COLORS={deep:"#174c69",water:"#2679a5",sand:"#c7b16b",grass:"#4caa58",forest:"#276844",mountain:"#8c7449",snow:"#d5ded8"};
+const TERRAINS=[
+ {id:"grass",label:"Grass",icon:"🌿",color:COLORS.grass},{id:"water",label:"Water",icon:"🌊",color:COLORS.water},
+ {id:"sand",label:"Sand",icon:"🏖️",color:COLORS.sand},{id:"forest",label:"Forest",icon:"🌲",color:COLORS.forest},
+ {id:"mountain",label:"Mountain",icon:"⛰️",color:COLORS.mountain},{id:"snow",label:"Snow",icon:"❄️",color:COLORS.snow}
+];
+const TOOL_LIST=[...TERRAINS.map(t=>({id:"paint:"+t.id,label:t.label,icon:t.icon,color:t.color})),
+ {id:"citizen",label:"Citizen",icon:"●",color:"#ffe6a1"},{id:"settlement",label:"Settlement",icon:"◆",color:"#f1c86b"},{id:"erase",label:"Erase life",icon:"✕",color:"#b65e55"},{id:"inspect",label:"Inspect",icon:"⌕",color:"#d5ded8"}];
+let world,selectedTool="paint:grass",running=false,days=1,tickHandle=null,selected={x:0,y:0},lastStamp="",events=[];
+const $=id=>document.getElementById(id);
+function rand(n){return Math.floor(Math.random()*n)}
+function blankTile(terrain="grass"){return {terrain,food:terrain==="forest"?3:terrain==="grass"?2:0,moisture:terrain==="water"?1:Math.random(),citizens:[],settlement:null}}
+function newWorld(w=64,h=40){
+ const tiles=Array.from({length:h},(_,y)=>Array.from({length:w},(_,x)=>blankTile((Math.random()<.08||x===0||y===0||x===w-1||y===h-1)?"water":"grass")));
+ // Organic blobs for forests, highlands, and lakes.
+ for(let i=0;i<Math.floor(w*h*.035);i++){let x=rand(w),y=rand(h),type=["forest","mountain","water","sand"][rand(4)],r=2+rand(4);
+ for(let yy=Math.max(0,y-r);yy<Math.min(h,y+r);yy++)for(let xx=Math.max(0,x-r);xx<Math.min(w,x+r);xx++)if(Math.hypot(xx-x,yy-y)<r&&Math.random()>.28)tiles[yy][xx]=blankTile(type)}
+ world={name:$("worldName").value.trim()||"Untitled World",w,h,tiles,citizens:[],settlements:[],nextId:1};
+ days=1;events=[];addEvent("Year 1: A new world begins. Shape the land and introduce life.");selected={x:Math.floor(w/2),y:Math.floor(h/2)};resizeCanvas();draw();updateUI();
+}
+function addEvent(text){events.unshift({day:days,text});events=events.slice(0,80);renderHistory()}
+function renderHistory(){const root=$("history");root.innerHTML="";events.forEach(e=>{const d=document.createElement("div");d.className="event";d.textContent=e.text;root.appendChild(d)})}
+function fitCanvas(){const stage=canvas.parentElement;const maxW=Math.max(260,stage.clientWidth-16),maxH=Math.max(260,stage.clientHeight-16),ratio=world.w/world.h;let w=maxW,h=w/ratio;if(h>maxH){h=maxH;w=h*ratio}canvas.style.width=Math.floor(w)+"px";canvas.style.height=Math.floor(h)+"px"}
+function resizeCanvas(){canvas.width=world.w*16;canvas.height=world.h*16;fitCanvas()}
+function draw(){
+ if(!world)return;const s=16;ctx.clearRect(0,0,canvas.width,canvas.height);
+ for(let y=0;y<world.h;y++)for(let x=0;x<world.w;x++){const t=world.tiles[y][x];ctx.fillStyle=COLORS[t.terrain]||COLORS.grass;ctx.fillRect(x*s,y*s,s,s);
+   if(t.terrain==="forest"){ctx.fillStyle="#174d36";ctx.fillRect(x*s+4,y*s+3,8,10);ctx.fillStyle="#397b48";ctx.fillRect(x*s+2,y*s+6,12,5)}
+   if(t.terrain==="mountain"){ctx.fillStyle="#c0a67b";ctx.beginPath();ctx.moveTo(x*s+2,y*s+14);ctx.lineTo(x*s+8,y*s+2);ctx.lineTo(x*s+14,y*s+14);ctx.fill()}
+   if(t.terrain==="water"&&((x+y)%3===0)){ctx.fillStyle="#63b9cc";ctx.fillRect(x*s+3,y*s+8,6,1)}
+   if(t.settlement){ctx.fillStyle="#e8c36a";ctx.fillRect(x*s+4,y*s+4,8,8);ctx.fillStyle="#8d4d37";ctx.fillRect(x*s+3,y*s+3,10,3)}
+   if(t.citizens.length){ctx.fillStyle="#ffedb0";ctx.beginPath();ctx.arc(x*s+8,y*s+8,Math.min(6,2+t.citizens.length),0,Math.PI*2);ctx.fill();ctx.fillStyle="#35442f";ctx.fillRect(x*s+6,y*s+7,2,2)}
+ }
+ ctx.strokeStyle="#ffffff15";ctx.lineWidth=.5;for(let x=0;x<=world.w;x++){ctx.beginPath();ctx.moveTo(x*s,0);ctx.lineTo(x*s,canvas.height);ctx.stroke()}for(let y=0;y<=world.h;y++){ctx.beginPath();ctx.moveTo(0,y*s);ctx.lineTo(canvas.width,y*s);ctx.stroke()}
+ ctx.strokeStyle="#ffe08a";ctx.lineWidth=2;ctx.strokeRect(selected.x*s+1,selected.y*s+1,s-2,s-2);
+}
+function updateUI(){
+ $("mapName").textContent=world.name;$("worldName").value=world.name;$("worldAge").textContent="Year "+(Math.floor((days-1)/365)+1)+" · Day "+(((days-1)%365)+1);$("status").textContent=running?"Simulating":"Paused";
+ $("citizenCount").textContent=world.citizens.length;$("settlementCount").textContent=world.settlements.length;$("dayCount").textContent=days.toLocaleString();
+ let land=0;world.tiles.flat().forEach(t=>{if(t.terrain!=="water")land++});$("landCount").textContent=Math.round(land/(world.w*world.h)*100)+"%";
+ const t=world.tiles[selected.y]?.[selected.x];if(t)$("tileInfo").textContent="("+selected.x+", "+selected.y+") · "+t.terrain+" · food "+t.food+" · "+t.citizens.length+" citizen(s)"+(t.settlement?" · settlement: "+t.settlement.name:"");
+}
+function buildTools(){const root=$("tools");TOOL_LIST.forEach(t=>{const b=document.createElement("button");b.className="tool"+(t.id===selectedTool?" active":"");b.dataset.tool=t.id;const sw=document.createElement("i");sw.className="swatch";sw.style.background=t.color;const label=document.createElement("span");label.textContent=t.icon+" "+t.label;b.append(sw,label);b.addEventListener("click",()=>{selectedTool=t.id;root.querySelectorAll("button").forEach(q=>q.classList.toggle("active",q===b))});root.appendChild(b)})}
+function tileFromEvent(e){const r=canvas.getBoundingClientRect();return {x:Math.max(0,Math.min(world.w-1,Math.floor((e.clientX-r.left)/r.width*world.w))),y:Math.max(0,Math.min(world.h-1,Math.floor((e.clientY-r.top)/r.height*world.h)))}}
+function stamp(x,y){const size=Number($("brushSize").value),radius=Math.floor(size/2);
+ for(let yy=Math.max(0,y-radius);yy<=Math.min(world.h-1,y+radius);yy++)for(let xx=Math.max(0,x-radius);xx<=Math.min(world.w-1,x+radius);xx++){
+ const t=world.tiles[yy][xx];if(Math.hypot(xx-x,yy-y)>radius+0.35)continue;
+ if(selectedTool.startsWith("paint:")){t.terrain=selectedTool.split(":")[1];if(t.terrain==="forest")t.food=Math.max(t.food,3);if(t.terrain==="water")t.food=0}
+ else if(selectedTool==="citizen"){if(t.terrain!=="water"&&world.citizens.length<1500){const c={id:world.nextId++,x:xx,y:yy,age:18+rand(35),health:100,food:10,home:null};world.citizens.push(c);t.citizens.push(c.id);if(world.citizens.length===1)addEvent("A first citizen arrives in the world.")}}
+ else if(selectedTool==="settlement"){if(t.terrain!=="water"&&!t.settlement){const s={id:world.nextId++,name:"Settlement "+(world.settlements.length+1),x:xx,y:yy,population:0,food:20};world.settlements.push(s);t.settlement=s;addEvent(s.name+" was founded at ("+xx+", "+yy+").")}}
+ else if(selectedTool==="erase"){if(t.citizens.length){const ids=new Set(t.citizens);world.citizens=world.citizens.filter(c=>!ids.has(c.id));t.citizens=[]}if(t.settlement){world.settlements=world.settlements.filter(s=>s.id!==t.settlement.id);t.settlement=null}}
+ else if(selectedTool==="inspect"){selected={x:xx,y:yy};}
+ }
+ selected={x,y};draw();updateUI();
+}
+let pointerDown=false;canvas.addEventListener("pointerdown",e=>{pointerDown=true;canvas.setPointerCapture(e.pointerId);const p=tileFromEvent(e);stamp(p.x,p.y)});canvas.addEventListener("pointermove",e=>{if(pointerDown){const p=tileFromEvent(e);const key=p.x+","+p.y;if(key!==lastStamp){lastStamp=key;stamp(p.x,p.y)}}});canvas.addEventListener("pointerup",()=>{pointerDown=false;lastStamp=""});canvas.addEventListener("pointercancel",()=>{pointerDown=false;lastStamp=""});
+function step(){
+ days++;
+ // Simple, transparent starter ecology and settlement behavior.
+ world.tiles.flat().forEach(t=>{if(t.terrain==="grass"&&Math.random()<.02)t.food=Math.min(5,t.food+1);if(t.terrain==="forest"&&Math.random()<.05)t.food=Math.min(8,t.food+1)});
+ world.citizens.forEach(c=>{c.age+=1/365;c.food-=.015;if(c.food<0)c.health=Math.max(0,c.health-.5);const t=world.tiles[c.y]?.[c.x];if(t&&t.food>0&&c.food<8){t.food--;c.food=Math.min(10,c.food+2)}});
+ const dead=world.citizens.filter(c=>c.health<=0||c.age>95);if(dead.length){const gone=new Set(dead.map(c=>c.id));world.citizens=world.citizens.filter(c=>!gone.has(c.id));world.tiles.flat().forEach(t=>t.citizens=t.citizens.filter(id=>!gone.has(id)));if(dead.length===1)addEvent("A citizen passed away; the world remembers.");else addEvent(dead.length+" citizens passed away.");}
+ world.settlements.forEach(s=>{const nearby=world.citizens.filter(c=>Math.hypot(c.x-s.x,c.y-s.y)<5);s.population=nearby.length;if(nearby.length>=4&&Math.random()<.04){const spots=[];for(let y=Math.max(0,s.y-4);y<Math.min(world.h,s.y+5);y++)for(let x=Math.max(0,s.x-4);x<Math.min(world.w,s.x+5);x++){const t=world.tiles[y][x];if(t.terrain!=="water"&&t.citizens.length===0&&Math.hypot(x-s.x,y-s.y)<5)spots.push({x,y,t})}if(spots.length){const p=spots[rand(spots.length)],c={id:world.nextId++,x:p.x,y:p.y,age:0,health:100,food:5,home:s.id};world.citizens.push(c);p.t.citizens.push(c.id);addEvent("A new citizen was born near "+s.name+".")}}});
+ if(days%30===0)addEvent("Day "+days+": the world continues to change.");
+ draw();updateUI();
+}
+function setRunning(v){running=v;$("playBtn").textContent=running?"⏸ Pause":"▶ Play";$("status").textContent=running?"Simulating":"Paused";if(tickHandle)clearInterval(tickHandle);tickHandle=null;if(running)tickHandle=setInterval(()=>{for(let i=0;i<Number($("speed").value);i++)step()},1000)}
+$("playBtn").addEventListener("click",()=>setRunning(!running));$("stepBtn").addEventListener("click",()=>{if(!running)step()});$("speed").addEventListener("change",()=>{if(running)setRunning(true)});
+$("brushSize").addEventListener("input",()=>{$("brushLabel").textContent=$("brushSize").value+" tile"+(Number($("brushSize").value)>1?"s":"")});
+$("worldName").addEventListener("change",()=>{world.name=$("worldName").value.trim()||"Untitled World";updateUI()});
+$("newBtn").addEventListener("click",()=>{if(confirm("Create a new world? Save this world first if you want to keep it.")){setRunning(false);newWorld(world.w,world.h)}});
+$("generateBtn").addEventListener("click",()=>{const [w,h]=$("worldSize").value.split("x").map(Number);setRunning(false);newWorld(w,h)});
+function save(){try{localStorage.setItem("chatgpt-worldbox-save-v1",JSON.stringify({world,days,events}));addEvent("World saved on this device.");}catch(e){alert("Could not save. Device storage may be full or blocked.")}}
+function load(){try{const raw=localStorage.getItem("chatgpt-worldbox-save-v1");if(!raw){alert("No saved world was found on this device yet.");return}const d=JSON.parse(raw);if(!d.world||!Array.isArray(d.world.tiles)||!d.world.w||!d.world.h)throw new Error("Save data is incomplete");world=d.world;days=d.days||1;events=Array.isArray(d.events)?d.events:[];setRunning(false);resizeCanvas();draw();renderHistory();updateUI();}catch(e){alert("This save could not be loaded. It may be damaged or from an incompatible version.")}}
+$("saveBtn").addEventListener("click",save);$("loadBtn").addEventListener("click",load);
+window.addEventListener("resize",fitCanvas);
+buildTools();newWorld();
+})();
+</script>
+</body>
+</html>
