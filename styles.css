@@ -185,3 +185,26 @@ body.playing{overflow:hidden}
 
 /* YouTube fallback is used only if the bundled intro video is missing. */
 .intro-frame{border:0;pointer-events:auto}
+
+/* Loader recovery polish: keep the fallback readable and the controls tappable
+   on mobile even when the optional intro video is missing or blocked. */
+#loader{isolation:isolate;overflow:hidden;padding:20px;text-align:center}
+#loader .intro-video{position:absolute;inset:0;width:100%;height:100%;max-height:none;object-fit:contain;border-radius:0;z-index:0}
+#loader .loader-fallback{z-index:1;padding:24px;pointer-events:none}
+#loader .intro-controls{position:absolute;left:12px;right:12px;bottom:max(18px,env(safe-area-inset-bottom));z-index:3}
+#loader .intro-controls button{min-height:44px;padding:11px 16px;border:1px solid #ffffff35;border-radius:12px;background:#10283b;color:#effaff;font-weight:800;box-shadow:0 8px 26px #0005}
+#loader .intro-controls button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+#loader .loader-fallback .loader-logo{font-size:clamp(30px,8vw,68px);text-shadow:0 0 28px #20d7ee35}
+#loader .loader-fallback .loader-ring{width:58px;height:58px}
+#loader .loader-progress{height:6px;box-shadow:0 0 18px #20d7ee22}
+#loader .loader-progress i{background:linear-gradient(90deg,var(--accent),var(--accent2))}
+#loaderText{max-width:90vw;color:#b8d5e3;margin:0;font-size:14px;line-height:1.5}
+@media(max-width:600px){
+  #loader .intro-video{object-fit:contain}
+  #loader .intro-controls{bottom:max(12px,env(safe-area-inset-bottom));gap:8px}
+  #loader .intro-controls button{flex:1;min-width:0;font-size:13px;padding:11px 10px}
+}
+@media(prefers-reduced-motion:reduce){
+  #loader .loader-fallback .loader-ring{animation:none}
+}
+
