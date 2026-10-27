@@ -294,6 +294,31 @@ document.querySelector("#output").textContent = message;</textarea>
   </div>
 </div>
 <footer><span>HYPERBLOCK</span> • Game Hub • Built for mobile + desktop</footer>
+<script>
+/* Navigation safety net: keeps page switching usable if the app module fails to load. */
+document.addEventListener("click", function(event){
+  if(window.__hyperblockNavigationWired) return;
+  var menuButton = event.target.closest("#menuBtn");
+  if(menuButton){
+    var menu = document.getElementById("mobileMenu");
+    if(menu) menu.classList.toggle("open");
+    return;
+  }
+  var button = event.target.closest("[data-page]");
+  if(!button) return;
+  var page = button.getAttribute("data-page");
+  if(!page || !document.getElementById(page)) return;
+  document.querySelectorAll(".page").forEach(function(section){
+    section.classList.toggle("active", section.id === page);
+  });
+  document.querySelectorAll(".desktop-nav button").forEach(function(nav){
+    nav.classList.toggle("active", nav.getAttribute("data-page") === page);
+  });
+  var mobileMenu = document.getElementById("mobileMenu");
+  if(mobileMenu) mobileMenu.classList.remove("open");
+  window.scrollTo({top:0,behavior:"smooth"});
+});
+</script>
 <script src="js/app.js" type="module" onerror="window.__hideLoader('Could not load js/app.js — check the file path.')"></script>
 </body>
 </html>
