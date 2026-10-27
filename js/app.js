@@ -47,18 +47,30 @@ function showPage(page){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
+let spinArenaLoadPromise = null;
 function loadSpinArena(){
-  import("./spin-arena.js").then(module => module.initSpinArena()).catch(error => {
+  const page = $("#original");
+  if(!page || $("#pbLaunchCard")) return;
+  if(spinArenaLoadPromise) return spinArenaLoadPromise;
+  let note = $("#spinArenaLoadError");
+  if(!note){
+    note = document.createElement("p");
+    note.id = "spinArenaLoadError";
+    note.className = "muted";
+    note.style.cssText = "padding:12px;border:1px solid #31566a;border-radius:8px;margin:12px 0";
+    page.append(note);
+  }
+  note.textContent = "Loading Original games…";
+  spinArenaLoadPromise = import("./spin-arena.js?build=20261026b").then(module => {
+    module.initSpinArena();
+    if($("#pbLaunchCard")) note.remove();
+    else throw new Error("The arena module loaded but did not create the Original game card.");
+  }).catch(error => {
     console.error("Physics Battle Lab failed to load:", error);
-    const page = $("#original");
-    if(page && !$("#spinArenaLoadError")){
-      const note = document.createElement("p");
-      note.id = "spinArenaLoadError";
-      note.className = "muted";
-      note.textContent = "Physics Battle Lab could not start. Other Hyperblock features should remain available; the game script needs repair.";
-      page.append(note);
-    }
+    note.textContent = "Original games failed to load. Tap Original again to retry. Details: " + (error?.message || String(error));
+    spinArenaLoadPromise = null;
   });
+  return spinArenaLoadPromise;
 }
 
 function addRecent(game){
@@ -231,7 +243,10 @@ async function loadGames(){
 }
 
 function setupNavigation(){
-  $$("[data-page]").forEach(btn => btn.addEventListener("click", () => showPage(btn.dataset.page)));
+  $("[data-page]").forEach(btn => btn.addEventListener("click", () => {
+    showPage(btn.dataset.page);
+    if(btn.dataset.page === "original" && !$("#pbLaunchCard")) loadSpinArena();
+  }));
   $("#menuBtn")?.addEventListener("click", () => $("#mobileMenu")?.classList.toggle("open"));
 }
 
