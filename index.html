@@ -319,6 +319,55 @@ document.addEventListener("click", function(event){
   window.scrollTo({top:0,behavior:"smooth"});
 });
 </script>
+<script>
+/* Catalog and Original-game recovery if the main app doesn't finish initializing. */
+(function(){
+  function card(game){
+    var el=document.createElement("article"); el.className="game-card";
+    var title=document.createElement("h3"); title.textContent=(game.icon||"🎮")+" "+game.name;
+    var cat=document.createElement("p"); cat.className="muted"; cat.textContent=game.category||"Game";
+    var btn=document.createElement("button"); btn.className="primary"; btn.type="button"; btn.textContent="Play game";
+    btn.addEventListener("click",function(){
+      var url=game.url;
+      if(game.embed===true && game.embedUrl) url=game.embedUrl;
+      window.open(url,"_blank","noopener,noreferrer");
+    });
+    el.append(title,cat,btn); return el;
+  }
+  async function recoverCatalog(){
+    var grid=document.getElementById("gameGrid");
+    if(!grid || grid.children.length) return;
+    try{
+      var response=await fetch("./data/games.json",{cache:"no-store"});
+      if(!response.ok) throw new Error("catalog HTTP "+response.status);
+      var games=await response.json();
+      if(!Array.isArray(games)) throw new Error("catalog is not an array");
+      grid.replaceChildren();
+      games.forEach(function(game){if(game && game.name && game.url) grid.append(card(game));});
+      var count=document.getElementById("gameCount"); if(count) count.textContent=grid.children.length;
+      var categoryCount=document.getElementById("categoryCount");
+      if(categoryCount) categoryCount.textContent=new Set(games.map(function(g){return g.category||"Other";})).size;
+      var featured=document.getElementById("featuredGrid");
+      if(featured && !featured.children.length) games.filter(function(g){return g.featured;}).slice(0,8).forEach(function(g){featured.append(card(g));});
+      console.warn("Hyperblock catalog recovery displayed the static game catalog.");
+    }catch(error){console.error("Hyperblock catalog recovery failed:",error);}
+  }
+  function recoverOriginal(){
+    var page=document.getElementById("original");
+    if(!page || document.getElementById("pbLaunchCard")) return;
+    var cardEl=document.createElement("article"); cardEl.id="pbLaunchCard"; cardEl.className="original-game-card";
+    var title=document.createElement("h3"); title.textContent="⚔️ ASB — Spinning Arena Battle";
+    var description=document.createElement("p"); description.textContent="Built-in Hyperblock physics battle sandbox.";
+    var button=document.createElement("button"); button.className="primary"; button.textContent="Open ASB";
+    button.addEventListener("click",async function(){
+      try{var module=await import("./js/spin-arena.js"); module.initSpinArena(); var open=document.getElementById("pbOpen"); if(open) open.click();}
+      catch(error){console.error("Could not open ASB:",error); description.textContent="ASB couldn't load. Reload the page and try again.";}
+    });
+    cardEl.append(title,description,button); page.append(cardEl);
+  }
+  window.addEventListener("load",function(){setTimeout(function(){recoverCatalog();recoverOriginal();},1800);});
+})();
+</script>
 <script src="js/app.js" type="module" onerror="window.__hideLoader('Could not load js/app.js — check the file path.')"></script>
 </body>
 </html>
