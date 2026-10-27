@@ -50,6 +50,15 @@ export function setupWebSearch(){
       if(configuredProxy && proxyableHosts.has(parsed.hostname.toLowerCase())) label = "Loading through Hyperblock proxy…";
       else if(configuredProxy) label = "Destination not allowlisted · opening directly";
     } catch {}
+    // Google and many search providers refuse to render inside third-party iframes.
+    // Open search results in a real tab so Search remains usable even when embedding is blocked.
+    if(!isUrl && selected === "google"){
+      const opened=window.open(url,"_blank","noopener,noreferrer");
+      status.textContent=opened ? "Google results opened in a new tab (Google blocks reliable embedding)." : "Google blocked the new tab. Tap Open in new tab to continue.";
+      currentUrl=url;
+      frame.src="about:blank";
+      return;
+    }
     setPage(url,label);
   });
   frame.addEventListener("load",()=>{
