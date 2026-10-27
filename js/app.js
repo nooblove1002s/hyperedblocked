@@ -245,7 +245,7 @@ async function loadGames(){
 function setupNavigation(){
   // There can be many navigation buttons (desktop and mobile), so use the
   // querySelectorAll helper. A single-element querySelector result has no forEach.
-  $("[data-page]").forEach(btn => btn.addEventListener("click", () => {
+  $$("[data-page]").forEach(btn => btn.addEventListener("click", () => {
     showPage(btn.dataset.page);
     if(btn.dataset.page === "original" && !$("#pbLaunchCard")) loadSpinArena();
   }));
