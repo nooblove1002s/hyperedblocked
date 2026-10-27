@@ -250,6 +250,7 @@ function setupNavigation(){
     if(btn.dataset.page === "original" && !$("#pbLaunchCard")) loadSpinArena();
   }));
   $("#menuBtn")?.addEventListener("click", () => $("#mobileMenu")?.classList.toggle("open"));
+  window.__hyperblockNavigationWired = true;
 }
 
 function normalizeHttpUrl(value){
